@@ -6,7 +6,9 @@ export type ProviderCategory =
   | "third_party" // 第三方供应商
   | "custom" // 自定义
   | "omo" // Oh My OpenCode
-  | "omo-slim"; // Oh My OpenCode Slim
+  | "omo-slim" // Oh My OpenCode Slim
+  | "omm" // Oh My MimoCode
+  | "omm-slim"; // Oh My MimoCode Slim
 
 export interface Provider {
   id: string;
@@ -265,6 +267,7 @@ export interface VisibleApps {
   codex: boolean;
   gemini: boolean;
   opencode: boolean;
+  mimocode: boolean;
   openclaw: boolean;
   hermes: boolean;
 }
@@ -374,6 +377,8 @@ export interface Settings {
   geminiConfigDir?: string;
   // 覆盖 OpenCode 配置目录（可选）
   opencodeConfigDir?: string;
+  // 覆盖 MimoCode 配置目录（可选）
+  mimocodeConfigDir?: string;
   // 覆盖 OpenClaw 配置目录（可选）
   openclawConfigDir?: string;
   // 覆盖 Hermes 配置目录（可选）
@@ -456,6 +461,7 @@ export interface McpServerSpec {
   // http 和 sse 字段
   url?: string;
   headers?: Record<string, string>;
+
   // 通用字段
   [key: string]: any;
 }
@@ -467,6 +473,7 @@ export interface McpApps {
   codex: boolean;
   gemini: boolean;
   opencode: boolean;
+  mimocode: boolean;
   openclaw: boolean;
   hermes: boolean;
 }
@@ -484,6 +491,7 @@ export interface McpServer {
   // 兼容旧字段（v3.6.x 及以前）
   enabled?: boolean; // 已废弃，v3.7.0 使用 apps 字段
   source?: string;
+
   [key: string]: any;
 }
 
@@ -582,6 +590,7 @@ export interface OpenCodeProviderOptions {
   baseURL?: string;
   apiKey?: string;
   headers?: Record<string, string>;
+
   // 支持额外选项（timeout, setCacheKey 等）
   [key: string]: unknown;
 }
@@ -596,6 +605,53 @@ export interface OpenCodeProviderConfig {
 
 // OpenCode MCP 服务器配置（与统一格式不同）
 export interface OpenCodeMcpServerSpec {
+  type: "local" | "remote";
+  // local 类型字段
+  command?: string[]; // 与统一格式不同：命令和参数合并为数组
+  environment?: Record<string, string>; // 与统一格式不同：使用 environment 而非 env
+  // remote 类型字段
+  url?: string;
+  headers?: Record<string, string>;
+  // 通用字段
+  enabled?: boolean;
+}
+
+// ============================================================================
+// MimoCode 专属配置（v3.9.2+）
+// ============================================================================
+
+// MimoCode 模型配置
+export interface MimoCodeModel {
+  name: string;
+  limit?: {
+    context?: number;
+    output?: number;
+  };
+  options?: Record<string, unknown>; // 模型级别额外选项（provider 路由等）
+  // 支持任意额外字段（cost、modalities、thinking、variants 等）
+  [key: string]: unknown;
+}
+
+// MimoCode 供应商选项
+export interface MimoCodeProviderOptions {
+  baseURL?: string;
+  apiKey?: string;
+  headers?: Record<string, string>;
+
+  // 支持额外选项（timeout, setCacheKey 等）
+  [key: string]: unknown;
+}
+
+// MimoCode 供应商配置（settings_config 结构）
+export interface MimoCodeProviderConfig {
+  npm: string; // AI SDK 包名，如 "@ai-sdk/openai-compatible"
+  name?: string; // 供应商显示名称
+  options: MimoCodeProviderOptions;
+  models: Record<string, MimoCodeModel>;
+}
+
+// MimoCode MCP 服务器配置（与统一格式不同）
+export interface MimoCodeMcpServerSpec {
   type: "local" | "remote";
   // local 类型字段
   command?: string[]; // 与统一格式不同：命令和参数合并为数组
@@ -669,6 +725,7 @@ export interface OpenClawAgentsDefaults {
   models?: Record<string, OpenClawModelCatalogEntry>;
   timeoutSeconds?: number;
   timeout?: number;
+
   [key: string]: unknown; // preserve unknown fields
 }
 
@@ -682,6 +739,7 @@ export interface OpenClawToolsConfig {
   profile?: OpenClawToolsProfile | string;
   allow?: string[];
   deny?: string[];
+
   [key: string]: unknown; // preserve unknown fields
 }
 
@@ -695,6 +753,7 @@ export interface HermesModelConfig {
   base_url?: string;
   context_length?: number;
   max_tokens?: number;
+
   [key: string]: unknown;
 }
 
