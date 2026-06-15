@@ -66,7 +66,7 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
     codex: boolean;
     gemini: boolean;
     opencode: boolean;
-    mimocode:boolean;
+    mimocode: boolean;
     openclaw: boolean;
     hermes: boolean;
   }>(() => {

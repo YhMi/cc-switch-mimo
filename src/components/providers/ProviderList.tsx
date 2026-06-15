@@ -102,6 +102,12 @@ export function ProviderList({
     enabled: appId === "opencode",
   });
 
+  const { data: mimocodeLiveIds } = useQuery({
+    queryKey: ["mimocodeLiveProviderIds"],
+    queryFn: () => providersApi.getMimoCodeLiveProviderIds(),
+    enabled: appId === "mimocode",
+  });
+
   // OpenClaw: 查询 live 配置中的供应商 ID 列表，用于判断 isInConfig
   const { data: openclawLiveIds } = useOpenClawLiveProviderIds(
     appId === "openclaw",
@@ -114,11 +120,14 @@ export function ProviderList({
   const { data: hermesModelConfig } = useHermesModelConfig(appId === "hermes");
   const hermesCurrentProviderId = hermesModelConfig?.provider;
 
-  // 判断供应商是否已添加到配置（累加模式应用：OpenCode/OpenClaw/Hermes）
+  // 判断供应商是否已添加到配置（累加模式应用：OpenCode/MimoCode/OpenClaw/Hermes）
   const isProviderInConfig = useCallback(
     (providerId: string): boolean => {
       if (appId === "opencode") {
         return opencodeLiveIds?.includes(providerId) ?? false;
+      }
+      if (appId === "mimocode") {
+        return mimocodeLiveIds?.includes(providerId) ?? false;
       }
       if (appId === "openclaw") {
         return openclawLiveIds?.includes(providerId) ?? false;
@@ -128,7 +137,7 @@ export function ProviderList({
       }
       return true; // 其他应用始终返回 true
     },
-    [appId, opencodeLiveIds, openclawLiveIds, hermesLiveIds],
+    [appId, opencodeLiveIds,mimocodeLiveIds, openclawLiveIds, hermesLiveIds],
   );
 
   // OpenClaw: query default model to determine which provider is default
@@ -154,8 +163,16 @@ export function ProviderList({
     isProxyTakeover === true && isAutoFailoverEnabled === true;
 
   const isOpenCode = appId === "opencode";
-  const { data: currentOmoId } = useCurrentOmoProviderId(isOpenCode);
-  const { data: currentOmoSlimId } = useCurrentOmoSlimProviderId(isOpenCode);
+  const { data: opencodecurrentOmoId } = useCurrentOmoProviderId(isOpenCode);
+  const { data: opencodecurrentOmoSlimId } = useCurrentOmoSlimProviderId(isOpenCode);
+
+  const isMimoCode = appId === "mimocode";
+  const { data: mimocodecurrentOmoId } = useCurrentOmoProviderId(isMimoCode);
+  const { data: mimocodecurrentOmoSlimId } = useCurrentOmoSlimProviderId(isMimoCode);
+
+  // 共用统一变量，自动匹配当前 appId
+  const currentOmoId = isOpenCode ? opencodecurrentOmoId : mimocodecurrentOmoId;
+  const currentOmoSlimId = isOpenCode ? opencodecurrentOmoSlimId : mimocodecurrentOmoSlimId;
 
   const getFailoverPriority = useCallback(
     (providerId: string): number | undefined => {
@@ -211,6 +228,10 @@ export function ProviderList({
     mutationFn: async (): Promise<boolean> => {
       if (appId === "opencode") {
         const count = await providersApi.importOpenCodeFromLive();
+        return count > 0;
+      }
+      if (appId === "mimocode") {
+        const count = await providersApi.importMimoCodeFromLive();
         return count > 0;
       }
       if (appId === "openclaw") {

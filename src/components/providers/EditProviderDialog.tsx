@@ -77,6 +77,14 @@ export function EditProviderDialog({
         return;
       }
 
+      if (appId === "mimocode") {
+        if (!cancelled) {
+          setLiveSettings(null);
+          setHasLoadedLive(true);
+        }
+        return;
+      }
+
       if (appId === "openclaw") {
         try {
           const live = await openclawApi.getLiveProvider(provider.id);
@@ -189,7 +197,7 @@ export function EditProviderDialog({
         unknown
       >;
       const nextProviderId =
-        (appId === "opencode" || appId === "openclaw") &&
+        (appId === "opencode" || appId === "mimocode" || appId === "openclaw") &&
         values.providerKey?.trim()
           ? values.providerKey.trim()
           : provider.id;

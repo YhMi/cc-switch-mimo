@@ -168,7 +168,7 @@ export function ProviderCard({
   // OMO and OMO Slim share the same card behavior
   const isAnyOmo = isOmo || isOmoSlim;
   const handleDisableAnyOmo = isOmoSlim ? onDisableOmoSlim : onDisableOmo;
-  const isAdditiveMode = appId === "opencode" && !isAnyOmo;
+  const isAdditiveMode = (appId === "opencode"||appId==="mimocode") && !isAnyOmo;
 
   const { data: health } = useProviderHealth(provider.id, appId);
 
@@ -233,9 +233,9 @@ export function ProviderCard({
     (provider.settingsConfig as Record<string, any>)?.config,
   ]);
   // 获取用量数据以判断是否有多套餐
-  // 累加模式应用（OpenCode/OpenClaw/Hermes）：使用 isInConfig 代替 isCurrent
+  // 累加模式应用（OpenCode/MimoCode/OpenClaw/Hermes）：使用 isInConfig 代替 isCurrent
   const shouldAutoQuery =
-    appId === "opencode" || appId === "openclaw" || appId === "hermes"
+    appId === "opencode" || appId === "mimocode" || appId === "openclaw" || appId === "hermes"
       ? isInConfig
       : isCurrent;
   const autoQueryInterval = shouldAutoQuery
@@ -271,6 +271,7 @@ export function ProviderCard({
   // - OMO/OMO Slim 供应商：使用 isCurrent
   // - OpenClaw：使用默认模型归属的 provider 作为当前项（蓝色边框）
   // - OpenCode（非 OMO）：不存在"当前"概念，返回 false
+  // - MimoCode（非 OMO）：不存在"当前"概念，返回 false
   // - 故障转移模式：代理实际使用的供应商（activeProviderId）
   // - 普通模式：isCurrent
   const isActiveProvider = isAnyOmo
@@ -279,6 +280,8 @@ export function ProviderCard({
       ? Boolean(isDefaultModel)
       : appId === "opencode"
         ? false
+              :appId==="mimocode"
+  ?false
         : isAutoFailoverEnabled
           ? activeProviderId === provider.id
           : isCurrent;

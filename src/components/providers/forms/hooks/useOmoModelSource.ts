@@ -3,13 +3,18 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { providersApi } from "@/lib/api";
 import { useProvidersQuery } from "@/lib/query/queries";
-import type { OpenCodeProviderConfig } from "@/types";
+import type { OpenCodeProviderConfig,MimoCodeProviderConfig } from "@/types";
 import { OPENCODE_PRESET_MODEL_VARIANTS } from "@/config/opencodeProviderPresets";
-import { parseOpencodeConfigStrict } from "../helpers/opencodeFormUtils";
+import { MIMOCODE_PRESET_MODEL_VARIANTS } from "@/config/mimocodeProviderPresets";
+import { parseOpencodeConfigStrict,parseMimocodeConfigStrict } from "../helpers/opencodeFormUtils";
+
+export type ProviderSourceType = "opencode" | "mimocode";
 
 interface UseOmoModelSourceParams {
   isOmoCategory: boolean;
   providerId?: string;
+  // 新增入参
+  providerType: ProviderSourceType;
 }
 
 interface OmoModelBuild {
@@ -36,24 +41,25 @@ export interface OmoModelSourceResult {
       limit?: { context?: number; output?: number };
     }
   >;
-  existingOpencodeKeys: string[];
+  existingKeys: string[];
 }
 
 export function useOmoModelSource({
   isOmoCategory,
   providerId,
+                                    providerType,
 }: UseOmoModelSourceParams): OmoModelSourceResult {
   const { t } = useTranslation();
 
-  const { data: opencodeProvidersData } = useProvidersQuery("opencode");
-  const existingOpencodeKeys = useMemo(() => {
-    if (!opencodeProvidersData?.providers) return [];
-    return Object.keys(opencodeProvidersData.providers).filter(
+  const { data: providersData } = useProvidersQuery(providerType);
+  const existingKeys = useMemo(() => {
+    if (!providersData?.providers) return [];
+    return Object.keys(providersData.providers).filter(
       (k) => k !== providerId,
     );
-  }, [opencodeProvidersData?.providers, providerId]);
+  }, [providersData?.providers, providerId]);
 
-  const [enabledOpencodeProviderIds, setEnabledOpencodeProviderIds] = useState<
+  const [enabledProviderIds, setEnabledProviderIds] = useState<
     string[] | null
   >(null);
   const [omoLiveIdsLoadFailed, setOmoLiveIdsLoadFailed] = useState(false);
@@ -62,21 +68,28 @@ export function useOmoModelSource({
   useEffect(() => {
     let active = true;
     if (!isOmoCategory) {
-      setEnabledOpencodeProviderIds(null);
+      setEnabledProviderIds(null);
       setOmoLiveIdsLoadFailed(false);
       return () => {
         active = false;
       };
     }
 
-    setEnabledOpencodeProviderIds(null);
+    setEnabledProviderIds(null);
     setOmoLiveIdsLoadFailed(false);
 
     (async () => {
       try {
-        const ids = await providersApi.getOpenCodeLiveProviderIds();
+        let ids: string[];
+        if (providerType === "opencode"){
+          ids = await providersApi.getOpenCodeLiveProviderIds();
+        }else if (providerType === "mimocode"){
+          ids = await providersApi.getMimoCodeLiveProviderIds();
+        }else {
+          ids = await providersApi.getOpenCodeLiveProviderIds();
+        }
         if (active) {
-          setEnabledOpencodeProviderIds(ids);
+          setEnabledProviderIds(ids);
         }
       } catch (error) {
         console.warn(
@@ -85,7 +98,7 @@ export function useOmoModelSource({
         );
         if (active) {
           setOmoLiveIdsLoadFailed(true);
-          setEnabledOpencodeProviderIds(null);
+          setEnabledProviderIds(null);
         }
       }
     })();
@@ -107,18 +120,18 @@ export function useOmoModelSource({
       return empty;
     }
 
-    const allProviders = opencodeProvidersData?.providers;
+    const allProviders = providersData?.providers;
     if (!allProviders) {
       return empty;
     }
 
     const shouldFilterByLive = !omoLiveIdsLoadFailed;
-    if (shouldFilterByLive && enabledOpencodeProviderIds === null) {
+    if (shouldFilterByLive && enabledProviderIds === null) {
       return empty;
     }
     const liveSet =
-      shouldFilterByLive && enabledOpencodeProviderIds
-        ? new Set(enabledOpencodeProviderIds)
+      shouldFilterByLive && enabledProviderIds
+        ? new Set(enabledProviderIds)
         : null;
 
     const dedupedOptions = new Map<string, string>();
@@ -132,6 +145,14 @@ export function useOmoModelSource({
     > = {};
     const parseFailedProviders: string[] = [];
 
+    const parseConfig = providerType === "opencode"
+        ? parseOpencodeConfigStrict
+        : parseMimocodeConfigStrict;
+
+    const presetVariants = providerType === "opencode"
+        ? OPENCODE_PRESET_MODEL_VARIANTS
+        : MIMOCODE_PRESET_MODEL_VARIANTS;
+
     for (const [providerKey, provider] of Object.entries(allProviders)) {
       if (provider.category === "omo" || provider.category === "omo-slim") {
         continue;
@@ -140,9 +161,9 @@ export function useOmoModelSource({
         continue;
       }
 
-      let parsedConfig: OpenCodeProviderConfig;
+      let parsedConfig: OpenCodeProviderConfig| MimoCodeProviderConfig;
       try {
-        parsedConfig = parseOpencodeConfigStrict(provider.settingsConfig);
+        parsedConfig = parseConfig(provider.settingsConfig);
       } catch (error) {
         parseFailedProviders.push(providerKey);
         console.warn(
@@ -187,7 +208,7 @@ export function useOmoModelSource({
       // Preset fallback: for models without config-defined variants,
       // check if the npm package has preset variant definitions.
       // Also collect preset metadata (options, limit) for enrichment.
-      const presetModels = OPENCODE_PRESET_MODEL_VARIANTS[parsedConfig.npm];
+      const presetModels = presetVariants[parsedConfig.npm];
       if (presetModels) {
         for (const modelId of Object.keys(parsedConfig.models || {})) {
           const fullKey = `${providerKey}/${modelId}`;
@@ -228,8 +249,8 @@ export function useOmoModelSource({
     };
   }, [
     isOmoCategory,
-    opencodeProvidersData?.providers,
-    enabledOpencodeProviderIds,
+    providersData?.providers,
+    enabledProviderIds,
     omoLiveIdsLoadFailed,
   ]);
 
@@ -275,6 +296,6 @@ export function useOmoModelSource({
     omoModelOptions: omoModelBuild.options,
     omoModelVariantsMap: omoModelBuild.variantsMap,
     omoPresetMetaMap: omoModelBuild.presetMetaMap,
-    existingOpencodeKeys,
+    existingKeys,
   };
 }

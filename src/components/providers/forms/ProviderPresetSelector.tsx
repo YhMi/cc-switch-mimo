@@ -10,6 +10,7 @@ import type { CodexProviderPreset } from "@/config/codexProviderPresets";
 import type { GeminiProviderPreset } from "@/config/geminiProviderPresets";
 import type { ClaudeDesktopProviderPreset } from "@/config/claudeDesktopProviderPresets";
 import type { OpenCodeProviderPreset } from "@/config/opencodeProviderPresets";
+import type { MimoCodeProviderPreset } from "@/config/mimocodeProviderPresets";
 import type { OpenClawProviderPreset } from "@/config/openclawProviderPresets";
 import type { HermesProviderPreset } from "@/config/hermesProviderPresets";
 import type { ProviderCategory } from "@/types";
@@ -35,6 +36,7 @@ export type AnyPreset =
   | GeminiProviderPreset
   | ClaudeDesktopProviderPreset
   | OpenCodeProviderPreset
+    |MimoCodeProviderPreset
   | OpenClawProviderPreset
   | HermesProviderPreset;
 

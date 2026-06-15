@@ -42,9 +42,10 @@ export function AddProviderDialog({
   onSubmit,
 }: AddProviderDialogProps) {
   const { t } = useTranslation();
-  // OpenCode and OpenClaw don't support universal providers
+  // OpenCode、MimoCode、 OpenClaw don't support universal providers
   const showUniversalTab =
     appId !== "opencode" &&
+      appId !== "mimocode" &&
     appId !== "openclaw" &&
     appId !== "hermes" &&
     appId !== "claude-desktop";
@@ -121,9 +122,9 @@ export function AddProviderDialog({
           preset?.category === "official";
       }
 
-      // OpenCode/OpenClaw: pass providerKey for ID generation
+      // OpenCode/MimoCode/OpenClaw: pass providerKey for ID generation
       if (
-        (appId === "opencode" || appId === "openclaw" || appId === "hermes") &&
+        (appId === "opencode" || appId==="mimocode"|| appId === "openclaw" || appId === "hermes") &&
         values.providerKey
       ) {
         providerData.providerKey = values.providerKey;
@@ -233,6 +234,13 @@ export function AddProviderDialog({
           const options = parsedConfig.options as
             | Record<string, any>
             | undefined;
+          if (options?.baseURL) {
+            addUrl(options.baseURL);
+          }
+        }else if (appId === "mimocode") {
+          const options = parsedConfig.options as
+              | Record<string, any>
+              | undefined;
           if (options?.baseURL) {
             addUrl(options.baseURL);
           }
@@ -353,7 +361,7 @@ export function AddProviderDialog({
           </TabsContent>
         </Tabs>
       ) : (
-        // OpenCode/OpenClaw: directly show form without tabs
+        // OpenCode/MimoCode/OpenClaw: directly show form without tabs
         <ProviderForm
           appId={appId}
           submitLabel={t("common.add")}

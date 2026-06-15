@@ -18,13 +18,13 @@ import {
   showFetchModelsError,
   type FetchedModel,
 } from "@/lib/api/model-fetch";
-import { opencodeNpmPackages } from "@/config/opencodeProviderPresets";
+import { mimocodeNpmPackages } from "@/config/mimocodeProviderPresets";
 import { cn } from "@/lib/utils";
 import {
-  getOpencodeModelExtraFields,
-  isKnownOpencodeModelKey,
+  getMimocodeModelExtraFields,
+  isKnownMimocodeModelKey,
 } from "./helpers/opencodeFormUtils";
-import type { ProviderCategory, OpenCodeModel } from "@/types";
+import type { ProviderCategory, MimoCodeModel } from "@/types";
 
 /**
  * Model ID input with local state to prevent focus loss.
@@ -142,7 +142,7 @@ function ModelOptionKeyInput({
   );
 }
 
-interface OpenCodeFormFieldsProps {
+interface MimoCodeFormFieldsProps {
   // NPM Package
   npm: string;
   onNpmChange: (value: string) => void;
@@ -161,15 +161,15 @@ interface OpenCodeFormFieldsProps {
   onBaseUrlChange: (value: string) => void;
 
   // Models
-  models: Record<string, OpenCodeModel>;
-  onModelsChange: (models: Record<string, OpenCodeModel>) => void;
+  models: Record<string, MimoCodeModel>;
+  onModelsChange: (models: Record<string, MimoCodeModel>) => void;
 
   // Extra Options
   extraOptions: Record<string, string>;
   onExtraOptionsChange: (options: Record<string, string>) => void;
 }
 
-export function OpenCodeFormFields({
+export function MimoCodeFormFields({
   npm,
   onNpmChange,
   apiKey,
@@ -185,7 +185,7 @@ export function OpenCodeFormFields({
   onModelsChange,
   extraOptions,
   onExtraOptionsChange,
-}: OpenCodeFormFieldsProps) {
+}: MimoCodeFormFieldsProps) {
   const { t } = useTranslation();
 
   const [fetchedModels, setFetchedModels] = useState<FetchedModel[]>([]);
@@ -256,7 +256,7 @@ export function OpenCodeFormFields({
   // Update model ID (key)
   const handleModelIdChange = (oldKey: string, newKey: string) => {
     if (oldKey === newKey || !newKey.trim()) return;
-    const newModels: Record<string, OpenCodeModel> = {};
+    const newModels: Record<string, MimoCodeModel> = {};
     for (const [k, v] of Object.entries(models)) {
       if (k === oldKey) {
         newModels[newKey] = v;
@@ -377,7 +377,7 @@ export function OpenCodeFormFields({
     if (!newKey.trim() || oldKey === newKey) return;
     const model = models[modelKey];
     // Reject reserved keys and duplicate extra field names
-    if (isKnownOpencodeModelKey(newKey) || (newKey !== oldKey && newKey in model))
+    if (isKnownMimocodeModelKey(newKey) || (newKey !== oldKey && newKey in model))
       return;
     const newModel: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(model)) {
@@ -386,7 +386,7 @@ export function OpenCodeFormFields({
     }
     onModelsChange({
       ...models,
-      [modelKey]: newModel as OpenCodeModel,
+      [modelKey]: newModel as MimoCodeModel,
     });
   };
 
@@ -447,21 +447,21 @@ export function OpenCodeFormFields({
     <>
       {/* NPM Package Selector */}
       <div className="space-y-2">
-        <FormLabel htmlFor="opencode-npm">
-          {t("opencode.npmPackage", {
+        <FormLabel htmlFor="mimocode-npm">
+          {t("mimocode.npmPackage", {
             defaultValue: "接口格式",
           })}
         </FormLabel>
         <Select value={npm} onValueChange={onNpmChange}>
-          <SelectTrigger id="opencode-npm">
+          <SelectTrigger id="mimocode-npm">
             <SelectValue
-              placeholder={t("opencode.selectPackage", {
+              placeholder={t("mimocode.selectPackage", {
                 defaultValue: "Select a package",
               })}
             />
           </SelectTrigger>
           <SelectContent>
-            {opencodeNpmPackages.map((pkg) => (
+            {mimocodeNpmPackages.map((pkg) => (
               <SelectItem key={pkg.value} value={pkg.value}>
                 {pkg.label}
               </SelectItem>
@@ -469,7 +469,7 @@ export function OpenCodeFormFields({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          {t("opencode.npmPackageHint", {
+          {t("mimocode.npmPackageHint", {
             defaultValue:
               "Select the AI SDK package that matches your provider.",
           })}
@@ -489,17 +489,17 @@ export function OpenCodeFormFields({
 
       {/* Base URL */}
       <div className="space-y-2">
-        <FormLabel htmlFor="opencode-baseurl">
-          {t("opencode.baseUrl", { defaultValue: "Base URL" })}
+        <FormLabel htmlFor="mimocode-baseurl">
+          {t("mimocode.baseUrl", { defaultValue: "Base URL" })}
         </FormLabel>
         <Input
-          id="opencode-baseurl"
+          id="mimocode-baseurl"
           value={baseUrl}
           onChange={(e) => onBaseUrlChange(e.target.value)}
           placeholder="https://api.example.com/v1"
         />
         <p className="text-xs text-muted-foreground">
-          {t("opencode.baseUrlHint", {
+          {t("mimocode.baseUrlHint", {
             defaultValue:
               "The base URL for the API endpoint. Leave empty to use the default endpoint for official SDKs.",
           })}
@@ -510,7 +510,7 @@ export function OpenCodeFormFields({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <FormLabel>
-            {t("opencode.extraOptions", { defaultValue: "额外选项" })}
+            {t("mimocode.extraOptions", { defaultValue: "额外选项" })}
           </FormLabel>
           <Button
             type="button"
@@ -520,13 +520,13 @@ export function OpenCodeFormFields({
             className="h-7 gap-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            {t("opencode.addExtraOption", { defaultValue: "添加" })}
+            {t("mimocode.addExtraOption", { defaultValue: "添加" })}
           </Button>
         </div>
 
         {Object.keys(extraOptions).length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            {t("opencode.noExtraOptions", {
+            {t("mimocode.noExtraOptions", {
               defaultValue: "暂无额外选项",
             })}
           </p>
@@ -534,10 +534,10 @@ export function OpenCodeFormFields({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 mb-1">
               <span className="flex-1">
-                {t("opencode.extraOptionKey", { defaultValue: "键名" })}
+                {t("mimocode.extraOptionKey", { defaultValue: "键名" })}
               </span>
               <span className="flex-1">
-                {t("opencode.extraOptionValue", { defaultValue: "值" })}
+                {t("mimocode.extraOptionValue", { defaultValue: "值" })}
               </span>
               <span className="w-9" />
             </div>
@@ -546,7 +546,7 @@ export function OpenCodeFormFields({
                 <ExtraOptionKeyInput
                   optionKey={key}
                   onChange={(newKey) => handleExtraOptionKeyChange(key, newKey)}
-                  placeholder={t("opencode.extraOptionKeyPlaceholder", {
+                  placeholder={t("mimocode.extraOptionKeyPlaceholder", {
                     defaultValue: "timeout",
                   })}
                 />
@@ -555,7 +555,7 @@ export function OpenCodeFormFields({
                   onChange={(e) =>
                     handleExtraOptionValueChange(key, e.target.value)
                   }
-                  placeholder={t("opencode.extraOptionValuePlaceholder", {
+                  placeholder={t("mimocode.extraOptionValuePlaceholder", {
                     defaultValue: "600000",
                   })}
                   className="flex-1"
@@ -575,7 +575,7 @@ export function OpenCodeFormFields({
         )}
 
         <p className="text-xs text-muted-foreground">
-          {t("opencode.extraOptionsHint", {
+          {t("mimocode.extraOptionsHint", {
             defaultValue:
               "配置额外的 SDK 选项，如 timeout、setCacheKey 等。值会自动解析类型（数字、布尔值等）。",
           })}
@@ -586,7 +586,7 @@ export function OpenCodeFormFields({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <FormLabel>
-            {t("opencode.models", { defaultValue: "Models" })}
+            {t("mimocode.models", { defaultValue: "Models" })}
           </FormLabel>
           <div className="flex gap-1">
             <Button
@@ -612,14 +612,14 @@ export function OpenCodeFormFields({
               className="h-7 gap-1"
             >
               <Plus className="h-3.5 w-3.5" />
-              {t("opencode.addModel", { defaultValue: "Add" })}
+              {t("mimocode.addModel", { defaultValue: "Add" })}
             </Button>
           </div>
         </div>
 
         {Object.keys(models).length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            {t("opencode.noModels", {
+            {t("mimocode.noModels", {
               defaultValue: "No models configured. Click Add to add a model.",
             })}
           </p>
@@ -628,10 +628,10 @@ export function OpenCodeFormFields({
             <div className="flex items-center gap-2 text-xs text-muted-foreground px-1 mb-1">
               <span className="w-9" />
               <span className="flex-1">
-                {t("opencode.modelId", { defaultValue: "模型 ID" })}
+                {t("mimocode.modelId", { defaultValue: "模型 ID" })}
               </span>
               <span className="flex-1">
-                {t("opencode.modelName", { defaultValue: "显示名称" })}
+                {t("mimocode.modelName", { defaultValue: "显示名称" })}
               </span>
               <span className="w-9" />
             </div>
@@ -657,7 +657,7 @@ export function OpenCodeFormFields({
                     <ModelIdInput
                       modelId={key}
                       onChange={(newId) => handleModelIdChange(key, newId)}
-                      placeholder={t("opencode.modelId", {
+                      placeholder={t("mimocode.modelId", {
                         defaultValue: "Model ID",
                       })}
                     />
@@ -671,7 +671,7 @@ export function OpenCodeFormFields({
                   <Input
                     value={model.name}
                     onChange={(e) => handleModelNameChange(key, e.target.value)}
-                    placeholder={t("opencode.modelName", {
+                    placeholder={t("mimocode.modelName", {
                       defaultValue: "Display Name",
                     })}
                     className="flex-1"
@@ -694,7 +694,7 @@ export function OpenCodeFormFields({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">
-                          {t("opencode.modelExtraFields", {
+                          {t("mimocode.modelExtraFields", {
                             defaultValue: "模型属性",
                           })}
                         </span>
@@ -708,15 +708,15 @@ export function OpenCodeFormFields({
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      {Object.keys(getOpencodeModelExtraFields(model)).length === 0 ? (
+                      {Object.keys(getMimocodeModelExtraFields(model)).length === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">
-                          {t("opencode.noModelExtraFields", {
+                          {t("mimocode.noModelExtraFields", {
                             defaultValue:
                               "模型属性 (variants, cost 等)，点击 + 添加",
                           })}
                         </p>
                       ) : (
-                        Object.entries(getOpencodeModelExtraFields(model)).map(
+                        Object.entries(getMimocodeModelExtraFields(model)).map(
                           ([fKey, fValue]) => (
                             <div key={fKey} className="flex items-center gap-2">
                               <ModelOptionKeyInput
@@ -729,7 +729,7 @@ export function OpenCodeFormFields({
                                   )
                                 }
                                 placeholder={t(
-                                  "opencode.modelExtraFieldKeyPlaceholder",
+                                  "mimocode.modelExtraFieldKeyPlaceholder",
                                   {
                                     defaultValue: "variants",
                                   },
@@ -745,7 +745,7 @@ export function OpenCodeFormFields({
                                   )
                                 }
                                 placeholder={t(
-                                  "opencode.modelOptionValuePlaceholder",
+                                  "mimocode.modelOptionValuePlaceholder",
                                   {
                                     defaultValue: '{"order": ["baseten"]}',
                                   },
@@ -773,7 +773,7 @@ export function OpenCodeFormFields({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">
-                          {t("opencode.sdkOptions", {
+                          {t("mimocode.sdkOptions", {
                             defaultValue: "SDK 选项",
                           })}
                         </span>
@@ -789,7 +789,7 @@ export function OpenCodeFormFields({
                       </div>
                       {Object.keys(model.options || {}).length === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">
-                          {t("opencode.noModelOptions", {
+                          {t("mimocode.noModelOptions", {
                             defaultValue: "模型选项，点击 + 添加",
                           })}
                         </p>
@@ -810,7 +810,7 @@ export function OpenCodeFormFields({
                                   )
                                 }
                                 placeholder={t(
-                                  "opencode.modelOptionKeyPlaceholder",
+                                  "mimocode.modelOptionKeyPlaceholder",
                                   {
                                     defaultValue: "provider",
                                   },
@@ -830,7 +830,7 @@ export function OpenCodeFormFields({
                                   )
                                 }
                                 placeholder={t(
-                                  "opencode.modelOptionValuePlaceholder",
+                                  "mimocode.modelOptionValuePlaceholder",
                                   {
                                     defaultValue: '{"order": ["baseten"]}',
                                   },
@@ -861,7 +861,7 @@ export function OpenCodeFormFields({
         )}
 
         <p className="text-xs text-muted-foreground">
-          {t("opencode.modelsHint", {
+          {t("mimocode.modelsHint", {
             defaultValue:
               "Configure available models. Model ID is the API identifier, Display Name is shown in the UI.",
           })}

@@ -5,6 +5,6 @@ export type AppId =
   | "codex"
   | "gemini"
   | "opencode"
-    |"mimocode"
+  | "mimocode"
   | "openclaw"
   | "hermes";

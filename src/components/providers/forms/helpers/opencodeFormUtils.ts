@@ -1,4 +1,9 @@
-import type { OpenCodeModel,MimoCodeModel, OpenCodeProviderConfig,MimoCodeProviderConfig } from "@/types";
+import type {
+  OpenCodeModel,
+  MimoCodeModel,
+  OpenCodeProviderConfig,
+  MimoCodeProviderConfig,
+} from "@/types";
 import type { PricingModelSourceOption } from "../ProviderAdvancedConfig";
 
 // ── Default configs ──────────────────────────────────────────────────
@@ -47,17 +52,17 @@ export const OPENCODE_DEFAULT_CONFIG = JSON.stringify(
   2,
 );
 export const MIMOCODE_DEFAULT_CONFIG = JSON.stringify(
-    {
-      npm: MIMOCODE_DEFAULT_NPM,
-      options: {
-        baseURL: "",
-        apiKey: "",
-        setCacheKey: true,
-      },
-      models: {},
+  {
+    npm: MIMOCODE_DEFAULT_NPM,
+    options: {
+      baseURL: "",
+      apiKey: "",
+      setCacheKey: true,
     },
-    null,
-    2,
+    models: {},
+  },
+  null,
+  2,
 );
 export const OPENCODE_KNOWN_OPTION_KEYS = [
   "baseURL",
@@ -90,7 +95,7 @@ export function isKnownOpencodeOptionKey(key: string): boolean {
 }
 export function isKnownMimocodeOptionKey(key: string): boolean {
   return MIMOCODE_KNOWN_OPTION_KEYS.includes(
-      key as (typeof MIMOCODE_KNOWN_OPTION_KEYS)[number],
+    key as (typeof MIMOCODE_KNOWN_OPTION_KEYS)[number],
   );
 }
 
@@ -125,25 +130,25 @@ export function parseOpencodeConfig(
   }
 }
 export function parseMimocodeConfig(
-    settingsConfig?: Record<string, unknown>,
+  settingsConfig?: Record<string, unknown>,
 ): MimoCodeProviderConfig {
   const normalize = (
-      parsed: Partial<MimoCodeProviderConfig>,
+    parsed: Partial<MimoCodeProviderConfig>,
   ): MimoCodeProviderConfig => ({
     npm: parsed.npm || MIMOCODE_DEFAULT_NPM,
     options:
-        parsed.options && typeof parsed.options === "object"
-            ? (parsed.options as MimoCodeProviderConfig["options"])
-            : {},
+      parsed.options && typeof parsed.options === "object"
+        ? (parsed.options as MimoCodeProviderConfig["options"])
+        : {},
     models:
-        parsed.models && typeof parsed.models === "object"
-            ? (parsed.models as Record<string, MimoCodeModel>)
-            : {},
+      parsed.models && typeof parsed.models === "object"
+        ? (parsed.models as Record<string, MimoCodeModel>)
+        : {},
   });
 
   try {
     const parsed = JSON.parse(
-        settingsConfig ? JSON.stringify(settingsConfig) : MIMOCODE_DEFAULT_CONFIG,
+      settingsConfig ? JSON.stringify(settingsConfig) : MIMOCODE_DEFAULT_CONFIG,
     ) as Partial<MimoCodeProviderConfig>;
     return normalize(parsed);
   } catch {
@@ -175,21 +180,21 @@ export function parseOpencodeConfigStrict(
 }
 
 export function parseMimocodeConfigStrict(
-    settingsConfig?: Record<string, unknown>,
+  settingsConfig?: Record<string, unknown>,
 ): MimoCodeProviderConfig {
   const parsed = JSON.parse(
-      settingsConfig ? JSON.stringify(settingsConfig) : MIMOCODE_DEFAULT_CONFIG,
+    settingsConfig ? JSON.stringify(settingsConfig) : MIMOCODE_DEFAULT_CONFIG,
   ) as Partial<MimoCodeProviderConfig>;
   return {
     npm: parsed.npm || MIMOCODE_DEFAULT_NPM,
     options:
-        parsed.options && typeof parsed.options === "object"
-            ? (parsed.options as MimoCodeProviderConfig["options"])
-            : {},
+      parsed.options && typeof parsed.options === "object"
+        ? (parsed.options as MimoCodeProviderConfig["options"])
+        : {},
     models:
-        parsed.models && typeof parsed.models === "object"
-            ? (parsed.models as Record<string, MimoCodeModel>)
-            : {},
+      parsed.models && typeof parsed.models === "object"
+        ? (parsed.models as Record<string, MimoCodeModel>)
+        : {},
   };
 }
 
@@ -205,7 +210,7 @@ export function isKnownOpencodeModelKey(key: string): boolean {
 
 export function isKnownMimocodeModelKey(key: string): boolean {
   return MIMOCODE_KNOWN_MODEL_KEYS.includes(
-      key as (typeof MIMOCODE_KNOWN_MODEL_KEYS)[number],
+    key as (typeof MIMOCODE_KNOWN_MODEL_KEYS)[number],
   );
 }
 
@@ -222,7 +227,7 @@ export function getOpencodeModelExtraFields(
 }
 
 export function getMimocodeModelExtraFields(
-    model: MimoCodeModel,
+  model: MimoCodeModel,
 ): Record<string, string> {
   const extra: Record<string, string> = {};
   for (const [k, v] of Object.entries(model)) {
@@ -246,7 +251,7 @@ export function toOpencodeExtraOptions(
 }
 
 export function toMimocodeExtraOptions(
-    options: MimoCodeProviderConfig["options"],
+  options: MimoCodeProviderConfig["options"],
 ): Record<string, string> {
   const extra: Record<string, string> = {};
   for (const [k, v] of Object.entries(options || {})) {
