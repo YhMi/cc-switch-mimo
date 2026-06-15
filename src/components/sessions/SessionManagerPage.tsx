@@ -664,7 +664,7 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                             <SelectItem value="mimocode">
                               <div className="flex items-center gap-2">
                                 <ProviderIcon
-                                  icon="mimocode"
+                                  icon="xiaomimimo"
                                   name="mimocode"
                                   size={14}
                                 />

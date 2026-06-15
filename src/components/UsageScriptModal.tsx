@@ -268,7 +268,7 @@ const UsageScriptModal: React.FC<UsageScriptModalProps> = ({
             apiKey: options.apiKey,
             baseUrl: options.baseURL,
           };
-        }else if (appId === "mimocode") {
+        } else if (appId === "mimocode") {
           // MimoCode (OMO): 凭据嵌在 options.{baseURL, apiKey}（SDK options 对象）
           const options = (config as any).options || {};
           return {

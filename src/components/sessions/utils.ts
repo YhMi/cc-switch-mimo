@@ -101,7 +101,7 @@ export const getProviderIconName = (providerId: string) => {
   if (providerId === "codex") return "openai";
   if (providerId === "claude") return "claude";
   if (providerId === "opencode") return "opencode";
-  if (providerId === "mimocode") return "mimocode";
+  if (providerId === "mimocode") return "xiaomimimo";
   if (providerId === "openclaw") return "openclaw";
   return providerId;
 };

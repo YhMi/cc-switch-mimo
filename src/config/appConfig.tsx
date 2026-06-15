@@ -21,7 +21,7 @@ export const APP_IDS: AppId[] = [
   "codex",
   "gemini",
   "opencode",
-    "mimocode",
+  "mimocode",
   "openclaw",
   "hermes",
 ];
@@ -32,7 +32,7 @@ export const SKILLS_APP_IDS: AppId[] = [
   "codex",
   "gemini",
   "opencode",
-    "mimocode",
+  "mimocode",
   "hermes",
 ];
 
@@ -90,17 +90,17 @@ export const APP_ICON_MAP: Record<AppId, AppConfig> = {
   mimocode: {
     label: "MimoCode",
     icon: (
-        <ProviderIcon
-            icon="opencode"
-            name="MimoCode"
-            size={14}
-            showFallback={false}
-        />
+      <ProviderIcon
+        icon="xiaomimimo"
+        name="MimoCode"
+        size={14}
+        showFallback={false}
+      />
     ),
     activeClass:
-        "bg-orange-500/10 ring-1 ring-orange-500/20 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400",
+      "bg-orange-500/10 ring-1 ring-orange-500/20 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400",
     badgeClass:
-        "bg-orange-500/10 text-orange-700 dark:text-orange-300 hover:bg-orange-500/20 border-0 gap-1.5",
+      "bg-orange-500/10 text-orange-700 dark:text-orange-300 hover:bg-orange-500/20 border-0 gap-1.5",
   },
   openclaw: {
     label: "OpenClaw",
