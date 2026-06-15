@@ -137,7 +137,7 @@ export function ProviderList({
       }
       return true; // 其他应用始终返回 true
     },
-    [appId, opencodeLiveIds,mimocodeLiveIds, openclawLiveIds, hermesLiveIds],
+    [appId, opencodeLiveIds, mimocodeLiveIds, openclawLiveIds, hermesLiveIds],
   );
 
   // OpenClaw: query default model to determine which provider is default
@@ -164,15 +164,19 @@ export function ProviderList({
 
   const isOpenCode = appId === "opencode";
   const { data: opencodecurrentOmoId } = useCurrentOmoProviderId(isOpenCode);
-  const { data: opencodecurrentOmoSlimId } = useCurrentOmoSlimProviderId(isOpenCode);
+  const { data: opencodecurrentOmoSlimId } =
+    useCurrentOmoSlimProviderId(isOpenCode);
 
   const isMimoCode = appId === "mimocode";
   const { data: mimocodecurrentOmoId } = useCurrentOmoProviderId(isMimoCode);
-  const { data: mimocodecurrentOmoSlimId } = useCurrentOmoSlimProviderId(isMimoCode);
+  const { data: mimocodecurrentOmoSlimId } =
+    useCurrentOmoSlimProviderId(isMimoCode);
 
   // 共用统一变量，自动匹配当前 appId
   const currentOmoId = isOpenCode ? opencodecurrentOmoId : mimocodecurrentOmoId;
-  const currentOmoSlimId = isOpenCode ? opencodecurrentOmoSlimId : mimocodecurrentOmoSlimId;
+  const currentOmoSlimId = isOpenCode
+    ? opencodecurrentOmoSlimId
+    : mimocodecurrentOmoSlimId;
 
   const getFailoverPriority = useCallback(
     (providerId: string): number | undefined => {

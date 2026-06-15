@@ -99,7 +99,7 @@ import {
   useGeminiCommonConfig,
   useOmoModelSource,
   useOpencodeFormState,
-    useMimocodeFormState,
+  useMimocodeFormState,
   useOmoDraftState,
   useOpenclawFormState,
   useHermesFormState,
@@ -113,7 +113,7 @@ import {
   CODEX_DEFAULT_CONFIG,
   GEMINI_DEFAULT_CONFIG,
   OPENCODE_DEFAULT_CONFIG,
-    MIMOCODE_DEFAULT_CONFIG,
+  MIMOCODE_DEFAULT_CONFIG,
   OPENCLAW_DEFAULT_CONFIG,
   normalizePricingSource,
 } from "./helpers/opencodeFormUtils";
@@ -121,7 +121,7 @@ import { HERMES_DEFAULT_CONFIG } from "./hooks/useHermesFormState";
 import { resolveManagedAccountId } from "@/lib/authBinding";
 import { useOpenClawLiveProviderIds } from "@/hooks/useOpenClaw";
 import { useHermesLiveProviderIds } from "@/hooks/useHermes";
-import {ProviderSourceType} from "@/components/providers/forms/hooks/useOmoModelSource.ts";
+import { ProviderSourceType } from "@/components/providers/forms/hooks/useOmoModelSource.ts";
 
 type PresetEntry = {
   id: string;
@@ -130,7 +130,7 @@ type PresetEntry = {
     | CodexProviderPreset
     | GeminiProviderPreset
     | OpenCodeProviderPreset
-      | MimoCodeProviderPreset
+    | MimoCodeProviderPreset
     | OpenClawProviderPreset
     | HermesProviderPreset;
 };
@@ -339,10 +339,15 @@ function ProviderFormFull({
     initialCategory: initialData?.category,
   });
   const isOpencodeOmoCategory = appId === "opencode" && category === "omo";
-  const isOpencodeOmoSlimCategory = appId === "opencode" && category === "omo-slim";
+  const isOpencodeOmoSlimCategory =
+    appId === "opencode" && category === "omo-slim";
   const isMimoOmoCategory = appId === "mimocode" && category === "omo";
   const isMimoOmoSlimCategory = appId === "mimocode" && category === "omo-slim";
-  const isAnyOmoCategory = isOpencodeOmoCategory || isOpencodeOmoSlimCategory||isMimoOmoCategory||isMimoOmoSlimCategory;
+  const isAnyOmoCategory =
+    isOpencodeOmoCategory ||
+    isOpencodeOmoSlimCategory ||
+    isMimoOmoCategory ||
+    isMimoOmoSlimCategory;
 
   useEffect(() => {
     setSelectedPresetId(initialData ? null : "custom");
@@ -382,13 +387,13 @@ function ProviderFormFull({
             ? GEMINI_DEFAULT_CONFIG
             : appId === "opencode"
               ? OPENCODE_DEFAULT_CONFIG
-                      : appId === "mimocode"
-                          ? MIMOCODE_DEFAULT_CONFIG
-              : appId === "openclaw"
-                ? OPENCLAW_DEFAULT_CONFIG
-                : appId === "hermes"
-                  ? HERMES_DEFAULT_CONFIG
-                  : CLAUDE_DEFAULT_CONFIG,
+              : appId === "mimocode"
+                ? MIMOCODE_DEFAULT_CONFIG
+                : appId === "openclaw"
+                  ? OPENCLAW_DEFAULT_CONFIG
+                  : appId === "hermes"
+                    ? HERMES_DEFAULT_CONFIG
+                    : CLAUDE_DEFAULT_CONFIG,
       icon: initialData?.icon ?? "",
       iconColor: initialData?.iconColor ?? "",
     }),
@@ -635,7 +640,7 @@ function ProviderFormFull({
         id: `opencode-${index}`,
         preset,
       }));
-    }else if (appId === "mimocode") {
+    } else if (appId === "mimocode") {
       return mimocodeProviderPresets.map<PresetEntry>((preset, index) => ({
         id: `mimocode-${index}`,
         preset,
@@ -801,7 +806,11 @@ function ProviderFormFull({
     omoModelVariantsMap,
     omoPresetMetaMap,
     existingKeys,
-  } = useOmoModelSource({ isOmoCategory: isAnyOmoCategory, providerId,providerType:appId as ProviderSourceType });
+  } = useOmoModelSource({
+    isOmoCategory: isAnyOmoCategory,
+    providerId,
+    providerType: appId as ProviderSourceType,
+  });
 
   const {
     data: opencodeLiveProviderIds = [],
@@ -838,15 +847,22 @@ function ProviderFormFull({
   });
 
   let initialOmoSettings: Record<string, unknown> | undefined;
-  if (appId === "opencode" && (initialData?.category === "omo" || initialData?.category === "omo-slim")) {
-    initialOmoSettings =
-      initialData.settingsConfig as Record<string, unknown> | undefined;
-  }
-  else if (appId === "mimocode" && (initialData?.category === "omo" || initialData?.category === "omo-slim")) {
-    initialOmoSettings =
-        initialData.settingsConfig as Record<string, unknown> | undefined;
-  }else {
-    initialOmoSettings= undefined;
+  if (
+    appId === "opencode" &&
+    (initialData?.category === "omo" || initialData?.category === "omo-slim")
+  ) {
+    initialOmoSettings = initialData.settingsConfig as
+      | Record<string, unknown>
+      | undefined;
+  } else if (
+    appId === "mimocode" &&
+    (initialData?.category === "omo" || initialData?.category === "omo-slim")
+  ) {
+    initialOmoSettings = initialData.settingsConfig as
+      | Record<string, unknown>
+      | undefined;
+  } else {
+    initialOmoSettings = undefined;
   }
 
   const omoDraft = useOmoDraftState({
@@ -893,11 +909,11 @@ function ProviderFormFull({
 
     if (appId === "mimocode" && !isAnyOmoCategory) {
       return Array.from(
-          new Set(
-              [...existingKeys, ...mimocodeLiveProviderIds].filter(
-                  (key) => key !== providerId,
-              ),
+        new Set(
+          [...existingKeys, ...mimocodeLiveProviderIds].filter(
+            (key) => key !== providerId,
           ),
+        ),
       );
     }
 
@@ -958,7 +974,7 @@ function ProviderFormFull({
     isHermesLiveProviderIdsLoading,
     isOpenclawLiveProviderIdsLoading,
     isOpencodeLiveProviderIdsLoading,
-      isMimocodeLiveProviderIdsLoading,
+    isMimocodeLiveProviderIdsLoading,
   ]);
 
   const isProviderKeyLocked = useMemo(() => {
@@ -983,7 +999,7 @@ function ProviderFormFull({
     isEditMode,
     openclawLiveProviderIds,
     opencodeLiveProviderIds,
-      mimocodeLiveProviderIds,
+    mimocodeLiveProviderIds,
     providerId,
   ]);
 
@@ -1077,15 +1093,15 @@ function ProviderFormFull({
       }
       if (isProviderKeyLockStateLoading) {
         toast.error(
-            t("providerForm.providerKeyStatusLoading", {
-              defaultValue: "正在加载供应商标识状态，请稍后再试",
-            }),
+          t("providerForm.providerKeyStatusLoading", {
+            defaultValue: "正在加载供应商标识状态，请稍后再试",
+          }),
         );
         return;
       }
       if (
-          !isProviderKeyLocked &&
-          additiveExistingProviderKeys.includes(mimocodeForm.mimocodeProviderKey)
+        !isProviderKeyLocked &&
+        additiveExistingProviderKeys.includes(mimocodeForm.mimocodeProviderKey)
       ) {
         toast.error(t("mimocode.providerKeyDuplicate"));
         return;
@@ -1204,23 +1220,29 @@ function ProviderFormFull({
     }
 
     // 单独校验 mimocode
-    if (appId === "mimocode" && isAnyOmoCategory && omoDraft.omoOtherFieldsStr.trim()) {
+    if (
+      appId === "mimocode" &&
+      isAnyOmoCategory &&
+      omoDraft.omoOtherFieldsStr.trim()
+    ) {
       try {
-        const otherFields = parseOmoOtherFieldsObject(omoDraft.omoOtherFieldsStr);
+        const otherFields = parseOmoOtherFieldsObject(
+          omoDraft.omoOtherFieldsStr,
+        );
         if (!otherFields) {
           toast.error(
-              t("omo.jsonMustBeObject", {
-                field: t("omo.otherFields", { defaultValue: "Other Config" }),
-                defaultValue: "{{field}} must be a JSON object",
-              }),
+            t("omo.jsonMustBeObject", {
+              field: t("omo.otherFields", { defaultValue: "Other Config" }),
+              defaultValue: "{{field}} must be a JSON object",
+            }),
           );
           return;
         }
       } catch {
         toast.error(
-            t("omo.invalidJson", {
-              defaultValue: "Other Fields contains invalid JSON",
-            }),
+          t("omo.invalidJson", {
+            defaultValue: "Other Fields contains invalid JSON",
+          }),
         );
         return;
       }
@@ -1368,24 +1390,24 @@ function ProviderFormFull({
         }
       }
       settingsConfig = JSON.stringify(omoConfig);
-    }else if (
-        appId === "mimocode" &&
-        (category === "omo" || category === "omo-slim")
+    } else if (
+      appId === "mimocode" &&
+      (category === "omo" || category === "omo-slim")
     ) {
       const omoConfig: Record<string, unknown> = {};
       if (Object.keys(omoDraft.omoAgents).length > 0) {
         omoConfig.agents = omoDraft.omoAgents;
       }
       if (
-          category === "omo" &&
-          Object.keys(omoDraft.omoCategories).length > 0
+        category === "omo" &&
+        Object.keys(omoDraft.omoCategories).length > 0
       ) {
         omoConfig.categories = omoDraft.omoCategories;
       }
       if (omoDraft.omoOtherFieldsStr.trim()) {
         // 格式已在 handleSubmit 前置校验中验证过，此处可以安全解析
         const otherFields = parseOmoOtherFieldsObject(
-            omoDraft.omoOtherFieldsStr,
+          omoDraft.omoOtherFieldsStr,
         );
         if (otherFields) {
           omoConfig.otherFields = otherFields;
@@ -1412,7 +1434,7 @@ function ProviderFormFull({
       } else {
         payload.providerKey = opencodeForm.opencodeProviderKey;
       }
-    }else   if (appId === "mimocode") {
+    } else if (appId === "mimocode") {
       if (isAnyOmoCategory) {
         if (!isEditMode) {
           const prefix = category === "omo" ? "omo" : "omo-slim";
@@ -1997,72 +2019,72 @@ function ProviderFormFull({
                       </p>
                     )}
                 </div>
-              ):appId==="mimocode"&& !isAnyOmoCategory ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="mimocode-key">
-                      {t("mimocode.providerKey")}
-                      <span className="text-destructive ml-1">*</span>
-                    </Label>
-                    <Input
-                        id="mimocode-key"
-                        value={mimocodeForm.mimocodeProviderKey}
-                        onChange={(e) =>
-                            mimocodeForm.setMimocodeProviderKey(
-                                e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
-                            )
-                        }
-                        placeholder={t("mimocode.providerKeyPlaceholder")}
-                        disabled={
-                            isProviderKeyLocked || isProviderKeyLockStateLoading
-                        }
-                        className={
-                          (additiveExistingProviderKeys.includes(
-                                  mimocodeForm.mimocodeProviderKey,
-                              ) &&
-                              !isProviderKeyLocked) ||
-                          (mimocodeForm.mimocodeProviderKey.trim() !== "" &&
-                              !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(
-                                  mimocodeForm.mimocodeProviderKey,
-                              ))
-                              ? "border-destructive"
-                              : ""
-                        }
-                    />
-                    {additiveExistingProviderKeys.includes(
-                            mimocodeForm.mimocodeProviderKey,
-                        ) &&
-                        !isProviderKeyLocked && (
-                            <p className="text-xs text-destructive">
-                              {t("mimocode.providerKeyDuplicate")}
-                            </p>
-                        )}
-                    {mimocodeForm.mimocodeProviderKey.trim() !== "" &&
+              ) : appId === "mimocode" && !isAnyOmoCategory ? (
+                <div className="space-y-2">
+                  <Label htmlFor="mimocode-key">
+                    {t("mimocode.providerKey")}
+                    <span className="text-destructive ml-1">*</span>
+                  </Label>
+                  <Input
+                    id="mimocode-key"
+                    value={mimocodeForm.mimocodeProviderKey}
+                    onChange={(e) =>
+                      mimocodeForm.setMimocodeProviderKey(
+                        e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+                      )
+                    }
+                    placeholder={t("mimocode.providerKeyPlaceholder")}
+                    disabled={
+                      isProviderKeyLocked || isProviderKeyLockStateLoading
+                    }
+                    className={
+                      (additiveExistingProviderKeys.includes(
+                        mimocodeForm.mimocodeProviderKey,
+                      ) &&
+                        !isProviderKeyLocked) ||
+                      (mimocodeForm.mimocodeProviderKey.trim() !== "" &&
                         !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(
-                            mimocodeForm.mimocodeProviderKey,
-                        ) && (
-                            <p className="text-xs text-destructive">
-                              {t("mimocode.providerKeyInvalid")}
-                            </p>
-                        )}
-                    {!(
-                            additiveExistingProviderKeys.includes(
-                                mimocodeForm.mimocodeProviderKey,
-                            ) && !isProviderKeyLocked
-                        ) &&
-                        (mimocodeForm.mimocodeProviderKey.trim() === "" ||
-                            /^[a-z0-9]+(-[a-z0-9]+)*$/.test(
-                                mimocodeForm.mimocodeProviderKey,
-                            )) && (
-                            <p className="text-xs text-muted-foreground">
-                              {isProviderKeyLocked
-                                  ? t("mimocode.providerKeyLockedHint", {
-                                    defaultValue:
-                                        "该供应商已添加到应用配置中，供应商标识不可修改",
-                                  })
-                                  : t("mimocode.providerKeyHint")}
-                            </p>
-                        )}
-                  </div>
+                          mimocodeForm.mimocodeProviderKey,
+                        ))
+                        ? "border-destructive"
+                        : ""
+                    }
+                  />
+                  {additiveExistingProviderKeys.includes(
+                    mimocodeForm.mimocodeProviderKey,
+                  ) &&
+                    !isProviderKeyLocked && (
+                      <p className="text-xs text-destructive">
+                        {t("mimocode.providerKeyDuplicate")}
+                      </p>
+                    )}
+                  {mimocodeForm.mimocodeProviderKey.trim() !== "" &&
+                    !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(
+                      mimocodeForm.mimocodeProviderKey,
+                    ) && (
+                      <p className="text-xs text-destructive">
+                        {t("mimocode.providerKeyInvalid")}
+                      </p>
+                    )}
+                  {!(
+                    additiveExistingProviderKeys.includes(
+                      mimocodeForm.mimocodeProviderKey,
+                    ) && !isProviderKeyLocked
+                  ) &&
+                    (mimocodeForm.mimocodeProviderKey.trim() === "" ||
+                      /^[a-z0-9]+(-[a-z0-9]+)*$/.test(
+                        mimocodeForm.mimocodeProviderKey,
+                      )) && (
+                      <p className="text-xs text-muted-foreground">
+                        {isProviderKeyLocked
+                          ? t("mimocode.providerKeyLockedHint", {
+                              defaultValue:
+                                "该供应商已添加到应用配置中，供应商标识不可修改",
+                            })
+                          : t("mimocode.providerKeyHint")}
+                      </p>
+                    )}
+                </div>
               ) : appId === "openclaw" ? (
                 <div className="space-y-2">
                   <Label htmlFor="openclaw-key">
@@ -2390,46 +2412,46 @@ function ProviderFormFull({
             )}
 
           {appId === "mimocode" && !isAnyOmoCategory && (
-              <MimoCodeFormFields
-                  npm={mimocodeForm.mimocodeNpm}
-                  onNpmChange={mimocodeForm.handleMimocodeNpmChange}
-                  apiKey={mimocodeForm.mimocodeApiKey}
-                  onApiKeyChange={mimocodeForm.handleMimocodeApiKeyChange}
-                  category={category}
-                  shouldShowApiKeyLink={shouldShowMimocodeApiKeyLink}
-                  websiteUrl={mimocodeWebsiteUrl}
-                  isPartner={isMimocodePartner}
-                  partnerPromotionKey={mimocodePartnerPromotionKey}
-                  baseUrl={mimocodeForm.mimocodeBaseUrl}
-                  onBaseUrlChange={mimocodeForm.handleMimocodeBaseUrlChange}
-                  models={mimocodeForm.mimocodeModels}
-                  onModelsChange={mimocodeForm.handleMimocodeModelsChange}
-                  extraOptions={mimocodeForm.mimocodeExtraOptions}
-                  onExtraOptionsChange={
-                    mimocodeForm.handleMimocodeExtraOptionsChange
-                  }
-              />
+            <MimoCodeFormFields
+              npm={mimocodeForm.mimocodeNpm}
+              onNpmChange={mimocodeForm.handleMimocodeNpmChange}
+              apiKey={mimocodeForm.mimocodeApiKey}
+              onApiKeyChange={mimocodeForm.handleMimocodeApiKeyChange}
+              category={category}
+              shouldShowApiKeyLink={shouldShowMimocodeApiKeyLink}
+              websiteUrl={mimocodeWebsiteUrl}
+              isPartner={isMimocodePartner}
+              partnerPromotionKey={mimocodePartnerPromotionKey}
+              baseUrl={mimocodeForm.mimocodeBaseUrl}
+              onBaseUrlChange={mimocodeForm.handleMimocodeBaseUrlChange}
+              models={mimocodeForm.mimocodeModels}
+              onModelsChange={mimocodeForm.handleMimocodeModelsChange}
+              extraOptions={mimocodeForm.mimocodeExtraOptions}
+              onExtraOptionsChange={
+                mimocodeForm.handleMimocodeExtraOptionsChange
+              }
+            />
           )}
 
           {appId === "mimocode" &&
-              (category === "omo" || category === "omo-slim") && (
-                  <OmoFormFields
-                      modelOptions={omoModelOptions}
-                      modelVariantsMap={omoModelVariantsMap}
-                      presetMetaMap={omoPresetMetaMap}
-                      agents={omoDraft.omoAgents}
-                      onAgentsChange={omoDraft.setOmoAgents}
-                      categories={
-                        category === "omo" ? omoDraft.omoCategories : undefined
-                      }
-                      onCategoriesChange={
-                        category === "omo" ? omoDraft.setOmoCategories : undefined
-                      }
-                      otherFieldsStr={omoDraft.omoOtherFieldsStr}
-                      onOtherFieldsStrChange={omoDraft.setOmoOtherFieldsStr}
-                      isSlim={category === "omo-slim"}
-                  />
-              )}
+            (category === "omo" || category === "omo-slim") && (
+              <OmoFormFields
+                modelOptions={omoModelOptions}
+                modelVariantsMap={omoModelVariantsMap}
+                presetMetaMap={omoPresetMetaMap}
+                agents={omoDraft.omoAgents}
+                onAgentsChange={omoDraft.setOmoAgents}
+                categories={
+                  category === "omo" ? omoDraft.omoCategories : undefined
+                }
+                onCategoriesChange={
+                  category === "omo" ? omoDraft.setOmoCategories : undefined
+                }
+                otherFieldsStr={omoDraft.omoOtherFieldsStr}
+                onOtherFieldsStrChange={omoDraft.setOmoOtherFieldsStr}
+                isSlim={category === "omo-slim"}
+              />
+            )}
 
           {/* OpenClaw 专属字段 */}
           {appId === "openclaw" && (
@@ -2561,30 +2583,30 @@ function ProviderFormFull({
               </div>
               {settingsConfigErrorField}
             </>
-          ): appId === "mimocode" &&
-          (category === "omo" || category === "omo-slim") ? (
-              <div className="space-y-2">
-                <Label>{t("provider.configJson")}</Label>
-                <JsonEditor
-                    value={omoDraft.mergedOmoJsonPreview}
-                    onChange={() => {}}
-                    rows={14}
-                    showValidation={false}
-                    language="json"
-                />
-              </div>
           ) : appId === "mimocode" &&
-          category !== "omo" &&
-          category !== "omo-slim" ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="settingsConfig">
-                    {t("provider.configJson")}
-                  </Label>
-                  <JsonEditor
-                      value={form.getValues("settingsConfig")}
-                      onChange={(config) => form.setValue("settingsConfig", config)}
-                      placeholder={`{
+            (category === "omo" || category === "omo-slim") ? (
+            <div className="space-y-2">
+              <Label>{t("provider.configJson")}</Label>
+              <JsonEditor
+                value={omoDraft.mergedOmoJsonPreview}
+                onChange={() => {}}
+                rows={14}
+                showValidation={false}
+                language="json"
+              />
+            </div>
+          ) : appId === "mimocode" &&
+            category !== "omo" &&
+            category !== "omo-slim" ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="settingsConfig">
+                  {t("provider.configJson")}
+                </Label>
+                <JsonEditor
+                  value={form.getValues("settingsConfig")}
+                  onChange={(config) => form.setValue("settingsConfig", config)}
+                  placeholder={`{
   "npm": "@ai-sdk/openai-compatible",
   "options": {
     "baseURL": "https://your-api-endpoint.com",
@@ -2592,13 +2614,13 @@ function ProviderFormFull({
   },
   "models": {}
 }`}
-                      rows={14}
-                      showValidation={true}
-                      language="json"
-                  />
-                </div>
-                {settingsConfigErrorField}
-              </>
+                  rows={14}
+                  showValidation={true}
+                  language="json"
+                />
+              </div>
+              {settingsConfigErrorField}
+            </>
           ) : appId === "openclaw" || appId === "hermes" ? (
             <>
               <div className="space-y-2">
@@ -2659,7 +2681,7 @@ function ProviderFormFull({
 
           {!isAnyOmoCategory &&
             appId !== "opencode" &&
-              appId !== "mimocode" &&
+            appId !== "mimocode" &&
             appId !== "openclaw" &&
             appId !== "hermes" && (
               <ProviderAdvancedConfig

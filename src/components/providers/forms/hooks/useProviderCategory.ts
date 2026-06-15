@@ -76,7 +76,7 @@ export function useProviderCategory({
       if (preset) {
         setCategory(preset.category || undefined);
       }
-    }else if (type === "mimocode" && appId === "mimocode") {
+    } else if (type === "mimocode" && appId === "mimocode") {
       const preset = mimocodeProviderPresets[index];
       if (preset) {
         setCategory(preset.category || undefined);

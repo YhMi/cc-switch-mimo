@@ -18,6 +18,7 @@ interface DirectorySettingsProps {
   codexDir?: string;
   geminiDir?: string;
   opencodeDir?: string;
+  mimocodeDir?: string;
   openclawDir?: string;
   hermesDir?: string;
   onDirectoryChange: (app: DirectoryAppId, value?: string) => void;
@@ -35,6 +36,7 @@ export function DirectorySettings({
   codexDir,
   geminiDir,
   opencodeDir,
+  mimocodeDir,
   openclawDir,
   hermesDir,
   onDirectoryChange,
@@ -135,6 +137,17 @@ export function DirectorySettings({
           onChange={(val) => onDirectoryChange("opencode", val)}
           onBrowse={() => onBrowseDirectory("opencode")}
           onReset={() => onResetDirectory("opencode")}
+        />
+
+        <DirectoryInput
+          label={t("settings.mimocodeConfigDir")}
+          description={undefined}
+          value={mimocodeDir}
+          resolvedValue={resolvedDirs.mimocode}
+          placeholder={t("settings.browsePlaceholderMimocode")}
+          onChange={(val) => onDirectoryChange("mimocode", val)}
+          onBrowse={() => onBrowseDirectory("mimocode")}
+          onReset={() => onResetDirectory("mimocode")}
         />
 
         <DirectoryInput

@@ -36,7 +36,7 @@ export type AnyPreset =
   | GeminiProviderPreset
   | ClaudeDesktopProviderPreset
   | OpenCodeProviderPreset
-    |MimoCodeProviderPreset
+  | MimoCodeProviderPreset
   | OpenClawProviderPreset
   | HermesProviderPreset;
 

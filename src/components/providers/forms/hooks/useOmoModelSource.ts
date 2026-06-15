@@ -3,10 +3,13 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { providersApi } from "@/lib/api";
 import { useProvidersQuery } from "@/lib/query/queries";
-import type { OpenCodeProviderConfig,MimoCodeProviderConfig } from "@/types";
+import type { OpenCodeProviderConfig, MimoCodeProviderConfig } from "@/types";
 import { OPENCODE_PRESET_MODEL_VARIANTS } from "@/config/opencodeProviderPresets";
 import { MIMOCODE_PRESET_MODEL_VARIANTS } from "@/config/mimocodeProviderPresets";
-import { parseOpencodeConfigStrict,parseMimocodeConfigStrict } from "../helpers/opencodeFormUtils";
+import {
+  parseOpencodeConfigStrict,
+  parseMimocodeConfigStrict,
+} from "../helpers/opencodeFormUtils";
 
 export type ProviderSourceType = "opencode" | "mimocode";
 
@@ -47,21 +50,19 @@ export interface OmoModelSourceResult {
 export function useOmoModelSource({
   isOmoCategory,
   providerId,
-                                    providerType,
+  providerType,
 }: UseOmoModelSourceParams): OmoModelSourceResult {
   const { t } = useTranslation();
 
   const { data: providersData } = useProvidersQuery(providerType);
   const existingKeys = useMemo(() => {
     if (!providersData?.providers) return [];
-    return Object.keys(providersData.providers).filter(
-      (k) => k !== providerId,
-    );
+    return Object.keys(providersData.providers).filter((k) => k !== providerId);
   }, [providersData?.providers, providerId]);
 
-  const [enabledProviderIds, setEnabledProviderIds] = useState<
-    string[] | null
-  >(null);
+  const [enabledProviderIds, setEnabledProviderIds] = useState<string[] | null>(
+    null,
+  );
   const [omoLiveIdsLoadFailed, setOmoLiveIdsLoadFailed] = useState(false);
   const lastOmoModelSourceWarningRef = useRef<string>("");
 
@@ -81,11 +82,11 @@ export function useOmoModelSource({
     (async () => {
       try {
         let ids: string[];
-        if (providerType === "opencode"){
+        if (providerType === "opencode") {
           ids = await providersApi.getOpenCodeLiveProviderIds();
-        }else if (providerType === "mimocode"){
+        } else if (providerType === "mimocode") {
           ids = await providersApi.getMimoCodeLiveProviderIds();
-        }else {
+        } else {
           ids = await providersApi.getOpenCodeLiveProviderIds();
         }
         if (active) {
@@ -145,11 +146,13 @@ export function useOmoModelSource({
     > = {};
     const parseFailedProviders: string[] = [];
 
-    const parseConfig = providerType === "opencode"
+    const parseConfig =
+      providerType === "opencode"
         ? parseOpencodeConfigStrict
         : parseMimocodeConfigStrict;
 
-    const presetVariants = providerType === "opencode"
+    const presetVariants =
+      providerType === "opencode"
         ? OPENCODE_PRESET_MODEL_VARIANTS
         : MIMOCODE_PRESET_MODEL_VARIANTS;
 
@@ -161,7 +164,7 @@ export function useOmoModelSource({
         continue;
       }
 
-      let parsedConfig: OpenCodeProviderConfig| MimoCodeProviderConfig;
+      let parsedConfig: OpenCodeProviderConfig | MimoCodeProviderConfig;
       try {
         parsedConfig = parseConfig(provider.settingsConfig);
       } catch (error) {

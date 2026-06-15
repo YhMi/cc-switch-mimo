@@ -377,7 +377,10 @@ export function OpenCodeFormFields({
     if (!newKey.trim() || oldKey === newKey) return;
     const model = models[modelKey];
     // Reject reserved keys and duplicate extra field names
-    if (isKnownOpencodeModelKey(newKey) || (newKey !== oldKey && newKey in model))
+    if (
+      isKnownOpencodeModelKey(newKey) ||
+      (newKey !== oldKey && newKey in model)
+    )
       return;
     const newModel: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(model)) {
@@ -708,7 +711,8 @@ export function OpenCodeFormFields({
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      {Object.keys(getOpencodeModelExtraFields(model)).length === 0 ? (
+                      {Object.keys(getOpencodeModelExtraFields(model))
+                        .length === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">
                           {t("opencode.noModelExtraFields", {
                             defaultValue:

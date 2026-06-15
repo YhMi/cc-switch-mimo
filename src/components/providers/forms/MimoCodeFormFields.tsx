@@ -377,7 +377,10 @@ export function MimoCodeFormFields({
     if (!newKey.trim() || oldKey === newKey) return;
     const model = models[modelKey];
     // Reject reserved keys and duplicate extra field names
-    if (isKnownMimocodeModelKey(newKey) || (newKey !== oldKey && newKey in model))
+    if (
+      isKnownMimocodeModelKey(newKey) ||
+      (newKey !== oldKey && newKey in model)
+    )
       return;
     const newModel: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(model)) {
@@ -708,7 +711,8 @@ export function MimoCodeFormFields({
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
-                      {Object.keys(getMimocodeModelExtraFields(model)).length === 0 ? (
+                      {Object.keys(getMimocodeModelExtraFields(model))
+                        .length === 0 ? (
                         <p className="text-xs text-muted-foreground py-1">
                           {t("mimocode.noModelExtraFields", {
                             defaultValue:

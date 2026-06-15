@@ -65,6 +65,7 @@ const TOOL_NAMES = [
   "codex",
   "gemini",
   "opencode",
+  "mimocode",
   "openclaw",
   "hermes",
 ] as const;
@@ -133,6 +134,8 @@ npm i -g @openai/codex@latest
 npm i -g @google/gemini-cli@latest
 # OpenCode
 ${posixScriptInstallCommand("https://opencode.ai/install")} || npm i -g opencode-ai@latest
+# MimoCode
+${posixScriptInstallCommand("https://mimo.xiaomi.com/install")} || npm i -g @mimo-ai/cli@latest
 # OpenClaw
 npm i -g openclaw@latest
 # Hermes
@@ -146,6 +149,8 @@ npm i -g @openai/codex@latest
 npm i -g @google/gemini-cli@latest
 # OpenCode
 npm i -g opencode-ai@latest
+# MimoCode
+npm i -g @mimo-ai/cli@latest
 # OpenClaw
 npm i -g openclaw@latest
 # Hermes
@@ -160,6 +165,7 @@ const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
   codex: "Codex",
   gemini: "Gemini CLI",
   opencode: "OpenCode",
+  mimocode: "MimoCode",
   openclaw: "OpenClaw",
   hermes: "Hermes",
 };
@@ -175,6 +181,7 @@ const TOOL_APP_IDS: Record<ToolName, AppId> = {
   codex: "codex",
   gemini: "gemini",
   opencode: "opencode",
+  mimocode: "mimocode",
   openclaw: "openclaw",
   hermes: "hermes",
 };

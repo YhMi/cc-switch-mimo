@@ -111,6 +111,7 @@ export function useSettings(): UseSettingsResult {
       codex: sanitizeDir(data?.codexConfigDir),
       gemini: sanitizeDir(data?.geminiConfigDir),
       opencode: sanitizeDir(data?.opencodeConfigDir),
+      mimocode: sanitizeDir(data?.mimocodeConfigDir),
       openclaw: sanitizeDir(data?.openclawConfigDir),
       hermes: sanitizeDir(data?.hermesConfigDir),
     });
@@ -190,6 +191,9 @@ export function useSettings(): UseSettingsResult {
         const sanitizedOpencodeDir = sanitizeDir(
           mergedSettings.opencodeConfigDir,
         );
+        const sanitizedMimocodeDir = sanitizeDir(
+            mergedSettings.mimocodeConfigDir,
+        );
         const sanitizedOpenclawDir = sanitizeDir(
           mergedSettings.openclawConfigDir,
         );
@@ -205,6 +209,7 @@ export function useSettings(): UseSettingsResult {
           codexConfigDir: sanitizedCodexDir,
           geminiConfigDir: sanitizedGeminiDir,
           opencodeConfigDir: sanitizedOpencodeDir,
+          mimocodeConfigDir: sanitizedMimocodeDir,
           openclawConfigDir: sanitizedOpenclawDir,
           language: mergedSettings.language,
         };
@@ -321,6 +326,9 @@ export function useSettings(): UseSettingsResult {
         const sanitizedOpencodeDir = sanitizeDir(
           mergedSettings.opencodeConfigDir,
         );
+        const sanitizedMimocodeDir = sanitizeDir(
+            mergedSettings.mimocodeConfigDir,
+        );
         const sanitizedOpenclawDir = sanitizeDir(
           mergedSettings.openclawConfigDir,
         );
@@ -329,6 +337,7 @@ export function useSettings(): UseSettingsResult {
         const previousCodexDir = sanitizeDir(data?.codexConfigDir);
         const previousGeminiDir = sanitizeDir(data?.geminiConfigDir);
         const previousOpencodeDir = sanitizeDir(data?.opencodeConfigDir);
+        const previousMimocodeDir = sanitizeDir(data?.mimocodeConfigDir);
         const previousOpenclawDir = sanitizeDir(data?.openclawConfigDir);
         const {
           webdavSync: _ignoredWebdavSync,
@@ -342,6 +351,7 @@ export function useSettings(): UseSettingsResult {
           codexConfigDir: sanitizedCodexDir,
           geminiConfigDir: sanitizedGeminiDir,
           opencodeConfigDir: sanitizedOpencodeDir,
+          mimocodeConfigDir: sanitizedMimocodeDir,
           openclawConfigDir: sanitizedOpenclawDir,
           language: mergedSettings.language,
         };
@@ -422,12 +432,13 @@ export function useSettings(): UseSettingsResult {
           console.warn("[useSettings] Failed to refresh tray menu", error);
         }
 
-        // 如果 Claude/Codex/Gemini/OpenCode/OpenClaw 的目录覆盖发生变化，则立即将"当前使用的供应商"写回对应应用的 live 配置
+        // 如果 Claude/Codex/Gemini/OpenCode/MimoCode/OpenClaw 的目录覆盖发生变化，则立即将"当前使用的供应商"写回对应应用的 live 配置
         // 如果插件同步已经执行过 syncCurrentProvidersLiveSafe，则跳过避免重复
         const claudeDirChanged = sanitizedClaudeDir !== previousClaudeDir;
         const codexDirChanged = sanitizedCodexDir !== previousCodexDir;
         const geminiDirChanged = sanitizedGeminiDir !== previousGeminiDir;
         const opencodeDirChanged = sanitizedOpencodeDir !== previousOpencodeDir;
+        const mimoCodeDirChanged = sanitizedMimocodeDir !== previousMimocodeDir;
         const openclawDirChanged = sanitizedOpenclawDir !== previousOpenclawDir;
         if (
           !pluginSynced &&
@@ -435,6 +446,7 @@ export function useSettings(): UseSettingsResult {
             codexDirChanged ||
             geminiDirChanged ||
             opencodeDirChanged ||
+              mimoCodeDirChanged ||
             openclawDirChanged)
         ) {
           const syncResult = await syncCurrentProvidersLiveSafe();
