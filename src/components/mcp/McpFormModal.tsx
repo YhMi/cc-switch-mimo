@@ -586,22 +586,6 @@ const McpFormModal: React.FC<McpFormModalProps> = ({
 
                 <div className="flex items-center gap-2">
                   <Checkbox
-                      id="enable-mimocode"
-                      checked={enabledApps.mimocode}
-                      onCheckedChange={(checked: boolean) =>
-                          setEnabledApps({ ...enabledApps, mimocode: checked })
-                      }
-                  />
-                  <label
-                      htmlFor="enable-mimocode"
-                      className="text-sm text-foreground cursor-pointer select-none"
-                  >
-                    {t("mcp.unifiedPanel.apps.mimocode")}
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Checkbox
                     id="enable-hermes"
                     checked={enabledApps.hermes}
                     onCheckedChange={(checked: boolean) =>
