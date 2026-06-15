@@ -41,7 +41,12 @@ export const useAddProviderMutation = (appId: AppId) => {
 
       let id: string;
 
-      if (appId === "opencode" || appId === "openclaw" || appId === "hermes") {
+      if (
+        appId === "opencode" ||
+        appId === "mimocode" ||
+        appId === "openclaw" ||
+        appId === "hermes"
+      ) {
         if (
           providerInput.category === "omo" ||
           providerInput.category === "omo-slim"
@@ -72,6 +77,21 @@ export const useAddProviderMutation = (appId: AppId) => {
       await queryClient.invalidateQueries({ queryKey: ["providers", appId] });
 
       if (appId === "opencode") {
+        await queryClient.invalidateQueries({
+          queryKey: ["omo", "current-provider-id"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo", "provider-count"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo-slim", "current-provider-id"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo-slim", "provider-count"],
+        });
+      }
+
+      if (appId === "mimocode") {
         await queryClient.invalidateQueries({
           queryKey: ["omo", "current-provider-id"],
         });
@@ -198,6 +218,21 @@ export const useDeleteProviderMutation = (appId: AppId) => {
         });
       }
 
+      if (appId === "mimocode") {
+        await queryClient.invalidateQueries({
+          queryKey: ["omo", "current-provider-id"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo", "provider-count"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo-slim", "current-provider-id"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo-slim", "provider-count"],
+        });
+      }
+
       if (appId === "openclaw") {
         await queryClient.invalidateQueries({
           queryKey: openclawKeys.health,
@@ -267,6 +302,19 @@ export const useSwitchProviderMutation = (appId: AppId) => {
           queryKey: ["omo-slim", "current-provider-id"],
         });
       }
+
+      if (appId === "mimocode") {
+        await queryClient.invalidateQueries({
+          queryKey: ["mimocodeLiveProviderIds"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo", "current-provider-id"],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ["omo-slim", "current-provider-id"],
+        });
+      }
+
       if (appId === "openclaw") {
         await queryClient.invalidateQueries({
           queryKey: openclawKeys.liveProviderIds,

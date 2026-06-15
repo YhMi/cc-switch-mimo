@@ -192,7 +192,7 @@ export function useSettings(): UseSettingsResult {
           mergedSettings.opencodeConfigDir,
         );
         const sanitizedMimocodeDir = sanitizeDir(
-            mergedSettings.mimocodeConfigDir,
+          mergedSettings.mimocodeConfigDir,
         );
         const sanitizedOpenclawDir = sanitizeDir(
           mergedSettings.openclawConfigDir,
@@ -327,7 +327,7 @@ export function useSettings(): UseSettingsResult {
           mergedSettings.opencodeConfigDir,
         );
         const sanitizedMimocodeDir = sanitizeDir(
-            mergedSettings.mimocodeConfigDir,
+          mergedSettings.mimocodeConfigDir,
         );
         const sanitizedOpenclawDir = sanitizeDir(
           mergedSettings.openclawConfigDir,
@@ -446,7 +446,7 @@ export function useSettings(): UseSettingsResult {
             codexDirChanged ||
             geminiDirChanged ||
             opencodeDirChanged ||
-              mimoCodeDirChanged ||
+            mimoCodeDirChanged ||
             openclawDirChanged)
         ) {
           const syncResult = await syncCurrentProvidersLiveSafe();

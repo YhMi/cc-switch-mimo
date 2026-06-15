@@ -132,6 +132,8 @@ export function useProxyStatus() {
             ? "Codex"
             : variables.appType === "gemini"
               ? "Gemini"
+                :variables.appType === "mimocode"
+              ? "MimoCode"
               : "OpenCode";
 
       toast.success(

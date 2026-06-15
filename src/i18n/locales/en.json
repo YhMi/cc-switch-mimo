@@ -119,6 +119,7 @@
     "addCodexProvider": "Add Codex Provider",
     "addGeminiProvider": "Add Gemini Provider",
     "addOpenCodeProvider": "Add OpenCode Provider",
+    "addMimoCodeProvider": "Add MimoCode Provider",
     "addToConfig": "Add",
     "removeFromConfig": "Remove",
     "setAsDefault": "Set Default",
@@ -696,7 +697,8 @@
       "claudeDesc": "Anthropic Claude Code CLI",
       "codexDesc": "OpenAI Codex CLI",
       "geminiDesc": "Google Gemini CLI",
-      "opencodeDesc": "OpenCode CLI"
+      "opencodeDesc": "OpenCode CLI",
+      "mimocodeDesc": "MimoCode CLI"
     },
     "skillStorage": {
       "title": "Skill Storage Location",
@@ -760,6 +762,8 @@
     "geminiConfigDirDescription": "Override Gemini configuration directory (.env).",
     "opencodeConfigDir": "OpenCode Configuration Directory",
     "opencodeConfigDirDescription": "Override OpenCode configuration directory (opencode.json).",
+    "mimocodeConfigDir": "MimoCode Configuration Directory",
+    "mimocodeConfigDirDescription": "Override MimoCode configuration directory (mimocode.json).",
     "openclawConfigDir": "OpenClaw Configuration Directory",
     "openclawConfigDirDescription": "Override OpenClaw configuration directory (openclaw.json).",
     "hermesConfigDir": "Hermes Configuration Directory",
@@ -768,6 +772,7 @@
     "browsePlaceholderCodex": "e.g., /home/<your-username>/.codex",
     "browsePlaceholderGemini": "e.g., /home/<your-username>/.gemini",
     "browsePlaceholderOpencode": "e.g., /home/<your-username>/.config/opencode",
+    "browsePlaceholderMimocode": "e.g., /home/<your-username>/.config/mimoncode",
     "browsePlaceholderOpenclaw": "e.g., /home/<your-username>/.openclaw",
     "browsePlaceholderHermes": "e.g., /home/<your-username>/.hermes",
     "browseDirectory": "Browse Directory",
@@ -790,7 +795,7 @@
     "officialWebsite": "Official Website",
     "github": "GitHub",
     "manualInstallCommands": "Manual Install Commands",
-    "oneClickInstallHint": "Install or upgrade Claude Code / Codex / Gemini CLI / OpenCode / OpenClaw / Hermes",
+    "oneClickInstallHint": "Install or upgrade Claude Code / Codex / Gemini CLI / OpenCode / MimoCode / OpenClaw / Hermes",
     "localEnvCheck": "Local environment check",
     "updateAllTools": "Update All ({{count}})",
     "currentVersion": "Current Version",
@@ -878,12 +883,13 @@
     "codex": "Codex",
     "gemini": "Gemini",
     "opencode": "OpenCode",
+    "mimocode": "MimoCode",
     "openclaw": "OpenClaw",
     "hermes": "Hermes"
   },
   "sessionManager": {
     "title": "Session Manager",
-    "subtitle": "Manage Claude Code, Codex, OpenCode, OpenClaw, Hermes and Gemini CLI sessions",
+    "subtitle": "Manage Claude Code, Codex, OpenCode, MimoCode , OpenClaw, Hermes and Gemini CLI sessions",
     "searchPlaceholder": "Search by content, directory, or ID",
     "searchSessions": "Search sessions",
     "providerFilterAll": "All",
@@ -1342,6 +1348,42 @@
     "modelOptionKeyPlaceholder": "provider",
     "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
   },
+  "mimocode": {
+    "npmPackage": "API Format",
+    "selectPackage": "Select API format",
+    "npmPackageHint": "Select the API format for the AI service",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "Custom API endpoint URL",
+    "models": "Models",
+    "modelsHint": "Configure available models and their display names",
+    "addModel": "Add Model",
+    "modelId": "Model ID",
+    "modelName": "Display Name",
+    "noModels": "No models configured",
+    "modelsRequired": "Please add at least one model",
+    "providerKey": "Provider Key",
+    "providerKeyPlaceholder": "my-provider",
+    "providerKeyHint": "Unique identifier in config file. Use lowercase letters, numbers, and hyphens only.",
+    "providerKeyLockedHint": "This provider has already been added to the app config, so its key can no longer be changed.",
+    "providerKeyRequired": "Provider key is required",
+    "providerKeyDuplicate": "This key is already in use",
+    "providerKeyInvalid": "Invalid format. Use lowercase letters, numbers, and hyphens only.",
+    "extraOptions": "Extra Options",
+    "extraOptionsHint": "Configure extra SDK options like timeout, setCacheKey, etc. Values are auto-parsed to appropriate types (number, boolean, etc.).",
+    "addExtraOption": "Add",
+    "extraOptionKey": "Key",
+    "extraOptionValue": "Value",
+    "extraOptionKeyPlaceholder": "timeout",
+    "extraOptionValuePlaceholder": "600000",
+    "noExtraOptions": "No extra options configured",
+    "noModelOptions": "Model options, click + to add",
+    "modelExtraFields": "Model Properties",
+    "noModelExtraFields": "Model properties (variants, cost, etc.), click + to add",
+    "modelExtraFieldKeyPlaceholder": "variants",
+    "sdkOptions": "SDK Options",
+    "modelOptionKeyPlaceholder": "provider",
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+  },
   "providerPreset": {
     "label": "Provider Preset",
     "custom": "Custom Configuration",
@@ -1407,7 +1449,8 @@
       "claude": "Claude Code",
       "codex": "Codex",
       "gemini": "Gemini",
-      "opencode": "OpenCode"
+      "opencode": "OpenCode",
+      "mimocode": "MimoCode"
     },
     "rawInputLabel": "Raw",
     "dataSources": "Data Sources",
@@ -1417,7 +1460,8 @@
       "codex_db": "Codex DB",
       "codex_session": "Codex Session",
       "gemini_session": "Gemini Session",
-      "opencode_session": "OpenCode Session"
+      "opencode_session": "OpenCode Session",
+      "mimocode_session": "MimoCode Session"
     },
     "sessionSync": {
       "trigger": "Sync session logs",
@@ -1625,6 +1669,7 @@
         "codex": "Codex",
         "gemini": "Gemini",
         "opencode": "OpenCode",
+        "mimocode": "MimoCode",
         "openclaw": "OpenClaw",
         "hermes": "Hermes"
       }
@@ -2198,6 +2243,7 @@
       "codex": "Codex",
       "gemini": "Gemini",
       "opencode": "OpenCode",
+      "mimocode": "MimoCode",
       "openclaw": "OpenClaw"
     },
     "installFromZip": {

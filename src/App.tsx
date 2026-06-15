@@ -123,6 +123,7 @@ const VALID_APPS: AppId[] = [
   "codex",
   "gemini",
   "opencode",
+  "mimocode",
   "openclaw",
   "hermes",
 ];
@@ -188,6 +189,7 @@ function App() {
     codex: true,
     gemini: true,
     opencode: true,
+    mimocode: true,
     openclaw: true,
     hermes: true,
   };
@@ -198,6 +200,7 @@ function App() {
     if (visibleApps.codex) return "codex";
     if (visibleApps.gemini) return "gemini";
     if (visibleApps.opencode) return "opencode";
+    if (visibleApps.mimocode) return "mimocode";
     if (visibleApps.openclaw) return "openclaw";
     if (visibleApps.hermes) return "hermes";
     return "claude"; // fallback
@@ -216,6 +219,7 @@ function App() {
       sharedFeatureApp !== "claude" &&
       sharedFeatureApp !== "codex" &&
       sharedFeatureApp !== "opencode" &&
+      sharedFeatureApp !== "mimocode" &&
       sharedFeatureApp !== "openclaw" &&
       sharedFeatureApp !== "gemini" &&
       sharedFeatureApp !== "hermes"
@@ -281,6 +285,7 @@ function App() {
     sharedFeatureApp === "claude" ||
     sharedFeatureApp === "codex" ||
     sharedFeatureApp === "opencode" ||
+    sharedFeatureApp === "mimocode" ||
     sharedFeatureApp === "openclaw" ||
     sharedFeatureApp === "gemini" ||
     sharedFeatureApp === "hermes";
@@ -629,13 +634,17 @@ function App() {
     const { provider, action } = confirmAction;
 
     if (action === "remove") {
-      // Remove from live config only (for additive mode apps like OpenCode/OpenClaw)
+      // Remove from live config only (for additive mode apps like OpenCode/MimoCode/OpenClaw)
       // Does NOT delete from database - provider remains in the list
       await providersApi.removeFromLiveConfig(provider.id, activeApp);
       // Invalidate queries to refresh the isInConfig state
       if (activeApp === "opencode") {
         await queryClient.invalidateQueries({
           queryKey: ["opencodeLiveProviderIds"],
+        });
+      } else if (activeApp === "mimocode") {
+        await queryClient.invalidateQueries({
+          queryKey: ["mimocodeLiveProviderIds"],
         });
       } else if (activeApp === "openclaw") {
         await queryClient.invalidateQueries({
@@ -698,6 +707,7 @@ function App() {
 
     if (
       activeApp === "opencode" ||
+      activeApp === "mimocode" ||
       activeApp === "openclaw" ||
       activeApp === "hermes"
     ) {
@@ -709,15 +719,20 @@ function App() {
                 queryKey: ["opencodeLiveProviderIds"],
                 queryFn: () => providersApi.getOpenCodeLiveProviderIds(),
               })
-            : activeApp === "openclaw"
+            : activeApp === "mimocode"
               ? await queryClient.ensureQueryData({
-                  queryKey: openclawKeys.liveProviderIds,
-                  queryFn: () => providersApi.getOpenClawLiveProviderIds(),
+                  queryKey: ["mimocodeLiveProviderIds"],
+                  queryFn: () => providersApi.getMimoCodeLiveProviderIds(),
                 })
-              : await queryClient.ensureQueryData({
-                  queryKey: hermesKeys.liveProviderIds,
-                  queryFn: () => providersApi.getHermesLiveProviderIds(),
-                });
+              : activeApp === "openclaw"
+                ? await queryClient.ensureQueryData({
+                    queryKey: openclawKeys.liveProviderIds,
+                    queryFn: () => providersApi.getOpenClawLiveProviderIds(),
+                  })
+                : await queryClient.ensureQueryData({
+                    queryKey: hermesKeys.liveProviderIds,
+                    queryFn: () => providersApi.getHermesLiveProviderIds(),
+                  });
       } catch (error) {
         console.error(
           "[App] Failed to load live provider IDs for duplication",
@@ -964,6 +979,7 @@ function App() {
                       }
                       onRemoveFromConfig={
                         activeApp === "opencode" ||
+                        activeApp === "mimocode" ||
                         activeApp === "openclaw" ||
                         activeApp === "hermes"
                           ? (provider) =>
@@ -971,12 +987,18 @@ function App() {
                           : undefined
                       }
                       onDisableOmo={
-                        activeApp === "opencode" ? handleDisableOmo : undefined
+                        activeApp === "opencode"
+                          ? handleDisableOmo
+                          : activeApp === "mimocode"
+                            ? handleDisableOmoSlim
+                            : undefined
                       }
                       onDisableOmoSlim={
                         activeApp === "opencode"
                           ? handleDisableOmoSlim
-                          : undefined
+                          : activeApp === "mimocode"
+                            ? handleDisableOmoSlim
+                            : undefined
                       }
                       onDuplicate={handleDuplicateProvider}
                       onConfigureUsage={setUsageProvider}
@@ -1214,6 +1236,7 @@ function App() {
           <div className="flex flex-1 min-w-0 items-center justify-end gap-1.5">
             {currentView === "providers" &&
               activeApp !== "opencode" &&
+              activeApp !== "mimocode" &&
               activeApp !== "openclaw" &&
               activeApp !== "hermes" && (
                 <div

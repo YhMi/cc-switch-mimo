@@ -119,6 +119,7 @@
     "addCodexProvider": "添加 Codex 供应商",
     "addGeminiProvider": "添加 Gemini 供应商",
     "addOpenCodeProvider": "添加 OpenCode 供应商",
+    "addMimoCodeProvider": "添加 MimoCode 供应商",
     "addToConfig": "添加",
     "removeFromConfig": "移除",
     "setAsDefault": "设为默认",
@@ -696,7 +697,8 @@
       "claudeDesc": "Anthropic Claude Code CLI",
       "codexDesc": "OpenAI Codex CLI",
       "geminiDesc": "Google Gemini CLI",
-      "opencodeDesc": "OpenCode CLI"
+      "opencodeDesc": "OpenCode CLI",
+      "mimocodeDesc": "MimoCode CLI"
     },
     "skillStorage": {
       "title": "Skills 存储位置",
@@ -760,6 +762,8 @@
     "geminiConfigDirDescription": "覆盖 Gemini 配置目录 (.env)。",
     "opencodeConfigDir": "OpenCode 配置目录",
     "opencodeConfigDirDescription": "覆盖 OpenCode 配置目录 (opencode.json)。",
+    "mimocodeConfigDir": "MimoCode 配置目录",
+    "mimocodeConfigDirDescription": "覆盖 MimoCode 配置目录 (mimocode.json)。",
     "openclawConfigDir": "OpenClaw 配置目录",
     "openclawConfigDirDescription": "覆盖 OpenClaw 配置目录 (openclaw.json)。",
     "hermesConfigDir": "Hermes 配置目录",
@@ -768,6 +772,7 @@
     "browsePlaceholderCodex": "例如：/home/<你的用户名>/.codex",
     "browsePlaceholderGemini": "例如：/home/<你的用户名>/.gemini",
     "browsePlaceholderOpencode": "例如：/home/<你的用户名>/.config/opencode",
+    "browsePlaceholderMimocode": "例如：/home/<你的用户名>/.config/mimocode",
     "browsePlaceholderOpenclaw": "例如：/home/<你的用户名>/.openclaw",
     "browsePlaceholderHermes": "例如：/home/<你的用户名>/.hermes",
     "browseDirectory": "浏览目录",
@@ -790,7 +795,7 @@
     "officialWebsite": "官方网站",
     "github": "GitHub",
     "manualInstallCommands": "手动安装命令",
-    "oneClickInstallHint": "安装或升级 Claude Code / Codex / Gemini CLI / OpenCode / OpenClaw / Hermes",
+    "oneClickInstallHint": "安装或升级 Claude Code / Codex / Gemini CLI / OpenCode / MimoCode / OpenClaw / Hermes",
     "localEnvCheck": "本地环境检查",
     "updateAllTools": "全部升级（{{count}}）",
     "currentVersion": "当前版本",
@@ -878,12 +883,13 @@
     "codex": "Codex",
     "gemini": "Gemini",
     "opencode": "OpenCode",
+    "mimocode": "MimoCode",
     "openclaw": "OpenClaw",
     "hermes": "Hermes"
   },
   "sessionManager": {
     "title": "会话管理",
-    "subtitle": "管理 Claude Code、Codex、OpenCode、OpenClaw、Hermes 与 Gemini CLI 会话记录",
+    "subtitle": "管理 Claude Code、Codex、OpenCode、MimoCode、OpenClaw、Hermes 与 Gemini CLI 会话记录",
     "searchPlaceholder": "搜索会话内容、目录或 ID",
     "searchSessions": "搜索会话",
     "providerFilterAll": "全部",
@@ -1342,6 +1348,42 @@
     "modelOptionKeyPlaceholder": "provider",
     "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
   },
+  "mimocode": {
+    "npmPackage": "接口格式",
+    "selectPackage": "选择接口格式",
+    "npmPackageHint": "选择 AI 服务的 API 接口格式",
+    "baseUrl": "Base URL",
+    "baseUrlHint": "自定义 API 端点地址",
+    "models": "模型配置",
+    "modelsHint": "配置可用的模型及其显示名称",
+    "addModel": "添加模型",
+    "modelId": "模型 ID",
+    "modelName": "显示名称",
+    "noModels": "暂无模型配置",
+    "modelsRequired": "请至少添加一个模型配置",
+    "providerKey": "供应商标识",
+    "providerKeyPlaceholder": "my-provider",
+    "providerKeyHint": "配置文件中的唯一标识符，只能使用小写字母、数字和连字符",
+    "providerKeyLockedHint": "该供应商已添加到应用配置中，供应商标识不可修改",
+    "providerKeyRequired": "请填写供应商标识",
+    "providerKeyDuplicate": "此标识已被使用，请更换",
+    "providerKeyInvalid": "标识格式无效，只能使用小写字母、数字和连字符",
+    "extraOptions": "额外选项",
+    "extraOptionsHint": "配置额外的 SDK 选项，如 timeout、setCacheKey 等。值会自动解析类型（数字、布尔值等）。",
+    "addExtraOption": "添加",
+    "extraOptionKey": "键名",
+    "extraOptionValue": "值",
+    "extraOptionKeyPlaceholder": "timeout",
+    "extraOptionValuePlaceholder": "600000",
+    "noExtraOptions": "暂无额外选项",
+    "noModelOptions": "模型选项，点击 + 添加",
+    "modelExtraFields": "模型属性",
+    "noModelExtraFields": "模型属性 (variants, cost 等)，点击 + 添加",
+    "modelExtraFieldKeyPlaceholder": "variants",
+    "sdkOptions": "SDK 选项",
+    "modelOptionKeyPlaceholder": "provider",
+    "modelOptionValuePlaceholder": "{\"order\": [\"baseten\"]}"
+  },
   "providerPreset": {
     "label": "预设供应商",
     "custom": "自定义配置",
@@ -1407,7 +1449,8 @@
       "claude": "Claude Code",
       "codex": "Codex",
       "gemini": "Gemini",
-      "opencode": "OpenCode"
+      "opencode": "OpenCode",
+      "mimocode": "MimoCode"
     },
     "rawInputLabel": "原始",
     "dataSources": "数据来源",
@@ -1417,7 +1460,8 @@
       "codex_db": "Codex 数据库",
       "codex_session": "Codex 会话日志",
       "gemini_session": "Gemini 会话日志",
-      "opencode_session": "OpenCode 会话日志"
+      "opencode_session": "OpenCode 会话日志",
+      "mimocode_session": "MimoCode 会话日志"
     },
     "sessionSync": {
       "trigger": "同步会话日志",
@@ -1625,6 +1669,7 @@
         "codex": "Codex",
         "gemini": "Gemini",
         "opencode": "OpenCode",
+        "mimocode": "MimoCode",
         "openclaw": "OpenClaw",
         "hermes": "Hermes"
       }
@@ -2198,6 +2243,7 @@
       "codex": "Codex",
       "gemini": "Gemini",
       "opencode": "OpenCode",
+      "mimocode": "MimoCode",
       "openclaw": "OpenClaw"
     },
     "installFromZip": {
