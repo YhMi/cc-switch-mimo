@@ -111,8 +111,8 @@ pub struct ToolVersion {
     wsl_distro: Option<String>,
 }
 
-const VALID_TOOLS: [&str; 6] = [
-    "claude", "codex", "gemini", "opencode", "openclaw", "hermes",
+const VALID_TOOLS: [&str; 7] = [
+    "claude", "codex", "gemini", "opencode","mimocode", "openclaw", "hermes",
 ];
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -425,6 +425,7 @@ fn tool_display_name(tool: &str) -> &'static str {
         "codex" => "Codex",
         "gemini" => "Gemini CLI",
         "opencode" => "OpenCode",
+        "mimocode"=> "MimoCode",
         "openclaw" => "OpenClaw",
         "hermes" => "Hermes",
         _ => "Unknown",
@@ -440,6 +441,9 @@ const CLAUDE_INSTALL_UNIX: &str =
     "bash -c 'tmp=$(mktemp) && curl -fsSL https://claude.ai/install.sh -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
 const OPENCODE_INSTALL_UNIX: &str =
     "bash -c 'tmp=$(mktemp) && curl -fsSL https://opencode.ai/install -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
+
+const MIMOCODE_INSTALL_UNIX: &str =
+    "bash -c 'tmp=$(mktemp) && curl -fsSL https://mimo.xiaomi.com/install -o $tmp && bash $tmp; status=$?; rm -f $tmp; exit $status'";
 
 /// Hermes 官方安装器会自带/选择合适的 Python 运行时。不要再用
 /// `python3 -m pip ... || python -m pip ...`:Hermes PyPI 包要求 Python >=3.11,
@@ -493,6 +497,7 @@ fn npm_install_command_for(tool: &str) -> Option<&'static str> {
         "codex" => Some("npm i -g @openai/codex@latest"),
         "gemini" => Some("npm i -g @google/gemini-cli@latest"),
         "opencode" => Some("npm i -g opencode-ai@latest"),
+        "mimocode" => Some("npm i -g @mimo-ai/cli@latest"),
         "openclaw" => Some("npm i -g openclaw@latest"),
         _ => None,
     }
@@ -503,6 +508,7 @@ fn official_update_args(tool: &str) -> Option<&'static str> {
         "claude" | "codex" | "hermes" => Some("update"),
         "openclaw" => Some("update --yes"),
         "opencode" => Some("upgrade"),
+        "mimocode" => Some("upgrade"),
         _ => None,
     }
 }
@@ -646,7 +652,7 @@ fn build_tool_action_line(
         let _ = (wsl_shell, wsl_shell_flag);
         // update 锚定到命令行实际命中的那处（写回同一个 node / brew / 原生安装器），
         // 而非裸 `npm` 落到 PATH 第一个 npm；install 走「上游推荐 || npm 兜底」短路链
-        // （有 native installer 的工具如 claude/opencode/hermes），其余仍裸 npm。
+        // （有 native installer 的工具如 claude/opencode/mimocode/hermes），其余仍裸 npm。
         let command = match action {
             ToolLifecycleAction::Update => {
                 let installs = enumerate_tool_installations(tool);
@@ -769,6 +775,15 @@ async fn get_single_tool_version_impl(
                 Some(version)
             } else {
                 fetch_github_latest_version(&client, "anomalyco/opencode").await
+            }
+        }
+        "mimocode" => {
+            if let Some(version) =
+                fetch_npm_latest_for_tool(&client, "@mimo-ai/cli", tool, local).await
+            {
+                Some(version)
+            } else {
+                fetch_github_latest_version(&client, "XiaomiMiMo/MiMo-Code").await
             }
         }
         "openclaw" => fetch_npm_latest_for_tool(&client, "openclaw", tool, local).await,
@@ -1337,6 +1352,33 @@ fn opencode_extra_search_paths(
     paths
 }
 
+/// MimoCode install.sh 路径优先级（见 https://github.com/XiaomiMiMo/MiMo-Code README）:
+///   $MIMOCODE_INSTALL_DIR > $XDG_BIN_DIR > $HOME/bin > $HOME/.mimocode/bin
+/// 额外扫描 Bun 默认全局安装路径（~/.bun/bin）
+/// 和 Go 安装路径（~/go/bin、$GOPATH/*/bin）。
+fn mimocode_extra_search_paths(
+    home: &Path,
+    mimocode_install_dir: Option<std::ffi::OsString>,
+    xdg_bin_dir: Option<std::ffi::OsString>,
+    gopath: Option<std::ffi::OsString>,
+) -> Vec<std::path::PathBuf> {
+    let mut paths = Vec::new();
+
+    push_env_single_dir(&mut paths, mimocode_install_dir);
+    push_env_single_dir(&mut paths, xdg_bin_dir);
+
+    if !home.as_os_str().is_empty() {
+        push_unique_path(&mut paths, home.join("bin"));
+        push_unique_path(&mut paths, home.join(".mimocode").join("bin"));
+        push_unique_path(&mut paths, home.join(".bun").join("bin"));
+        push_unique_path(&mut paths, home.join("go").join("bin"));
+    }
+
+    extend_from_path_list(&mut paths, gopath, Some("bin"));
+
+    paths
+}
+
 fn tool_executable_candidates(tool: &str, dir: &Path) -> Vec<std::path::PathBuf> {
     #[cfg(target_os = "windows")]
     {
@@ -1492,6 +1534,19 @@ fn build_tool_search_paths(tool: &str) -> Vec<std::path::PathBuf> {
         let extra_paths = opencode_extra_search_paths(
             &home,
             std::env::var_os("OPENCODE_INSTALL_DIR"),
+            std::env::var_os("XDG_BIN_DIR"),
+            std::env::var_os("GOPATH"),
+        );
+
+        for path in extra_paths {
+            push_unique_path(&mut search_paths, path);
+        }
+    }
+
+    if tool == "mimocode" {
+        let extra_paths = mimocode_extra_search_paths(
+            &home,
+            std::env::var_os("MIMOCODE_INSTALL_DIR"),
             std::env::var_os("XDG_BIN_DIR"),
             std::env::var_os("GOPATH"),
         );
@@ -1813,6 +1868,7 @@ fn npm_package_for(tool: &str) -> Option<&'static str> {
         "codex" => Some("@openai/codex"),
         "gemini" => Some("@google/gemini-cli"),
         "opencode" => Some("opencode-ai"),
+        "mimocode"=> Some("@mimo-ai/cli"),
         "openclaw" => Some("openclaw"),
         _ => None,
     }
@@ -1997,7 +2053,7 @@ fn anchored_official_update_command(tool: &str, bin_path: &str) -> Option<String
 fn prefers_official_update(tool: &str, shell: LifecycleCommandShell) -> bool {
     match shell {
         LifecycleCommandShell::Posix => {
-            matches!(tool, "claude" | "opencode" | "openclaw")
+            matches!(tool, "claude" | "opencode"|"mimocode" | "openclaw")
         }
         LifecycleCommandShell::WindowsBatch => {
             matches!(
@@ -2311,6 +2367,7 @@ fn posix_install_command_for(tool: &str) -> String {
     match tool {
         "claude" => installer_with_npm_fallback(CLAUDE_INSTALL_UNIX, tool),
         "opencode" => installer_with_npm_fallback(OPENCODE_INSTALL_UNIX, tool),
+        "mimocode"=> installer_with_npm_fallback(MIMOCODE_INSTALL_UNIX, tool),
         "hermes" => HERMES_INSTALL_UNIX.to_string(),
         _ => static_fallback_command_for(tool, ToolLifecycleAction::Install),
     }
@@ -2421,6 +2478,7 @@ fn wsl_distro_for_tool(tool: &str) -> Option<String> {
         "codex" => crate::settings::get_codex_override_dir(),
         "gemini" => crate::settings::get_gemini_override_dir(),
         "opencode" => crate::settings::get_opencode_override_dir(),
+        "mimocode"=> crate::settings::get_mimocode_override_dir(),
         "openclaw" => crate::settings::get_openclaw_override_dir(),
         "hermes" => crate::settings::get_hermes_override_dir(),
         _ => None,
@@ -3626,6 +3684,25 @@ mod tests {
         }
 
         #[test]
+        fn mimocode_windows_uses_package_fallback_without_official_upgrade() {
+            let (_dir, sub, bin_path) = setup_sibling("pnpm", "mimo.cmd", &["pnpm.cmd"]);
+            let cmd = anchored_command_from_paths("mimo", &bin_path, &bin_path);
+            let pnpm_full = format!("{}\\pnpm.cmd", sub.to_string_lossy());
+            let expected = format!(
+                "{} add -g @mimo-ai/cli@latest",
+                expect_quoted_path(&pnpm_full)
+            );
+            assert_eq!(cmd.as_deref(), Some(expected.as_str()));
+        }
+
+        #[test]
+        fn mimocode_windows_static_fallback_skips_official_upgrade() {
+            let cmd = static_fallback_command("mimo");
+            assert_eq!(cmd, "npm i -g@mimo-ai/cli@latest");
+            assert!(!cmd.contains("mimo upgrade"));
+        }
+
+        #[test]
         fn npm_windows_default_branch() {
             // 任意 system 类路径(不命中 volta/pnpm)→ 兜底 sibling npm.cmd 锚定。
             // 模拟 nvm-windows 的实际形态:`<NVM_HOME>\v22.0.0\codex.cmd`。
@@ -3955,6 +4032,16 @@ mod tests {
             );
             assert!(!opencode.contains("| bash"));
 
+            let mimocode =
+                wsl_tool_action_shell_command("mimocode", ToolLifecycleAction::Install).unwrap();
+            assert!(
+                mimocode.starts_with(
+                    "bash -c 'tmp=$(mktemp) && curl -fsSL https://mimo.xiaomi.com/install "
+                ) && mimocode.contains(" || npm i -g @mimo-ai/cli@latest"),
+                "WSL mimocode install should prefer native POSIX installer with npm fallback: {mimocode}"
+            );
+            assert!(!mimocode.contains("| bash"));
+
             let codex =
                 wsl_tool_action_shell_command("codex", ToolLifecycleAction::Install).unwrap();
             assert_eq!(codex, "npm i -g @openai/codex@latest");
@@ -4262,6 +4349,32 @@ mod tests {
         }
 
         #[test]
+        fn mimocode_native_install_uses_cli_upgrade_without_package_fallback() {
+            // mimocode install.sh 装到 ~/.mimocode/bin（独立二进制、无同级 npm）：
+            // 不能锚定到 `<dir>/npm`（必失败），但可以锚定到 CLI 自身跑官方 upgrade。
+            let cmd = anchored_command_from_paths(
+                "mimocode",
+                "/Users/me/.mimocode/bin/mimocode",
+                "/Users/me/.mimocode/bin/mimocode",
+            );
+            assert_eq!(
+                cmd.as_deref(),
+                Some("/Users/me/.mimocode/bin/mimocode upgrade")
+            );
+        }
+
+        #[test]
+        fn go_bin_mimocode_uses_cli_upgrade_without_package_fallback() {
+            // ~/go/bin 同理：无同级 npm，但 MimoCode 官方 upgrade 可由 CLI 自己处理。
+            let cmd = anchored_command_from_paths(
+                "mimocode",
+                "/Users/me/go/bin/mimocode",
+                "/Users/me/go/bin/mimocode",
+            );
+            assert_eq!(cmd.as_deref(), Some("/Users/me/go/bin/mimocode upgrade"));
+        }
+
+        #[test]
         fn fnm_install_anchors_to_that_npm() {
             // fnm 是自带同级 npm 的 node 管理器 → 锚定到那处的 npm。
             let cmd = anchored_command_from_paths(
@@ -4552,6 +4665,25 @@ mod tests {
         }
 
         #[test]
+        fn mimocode_install_prefers_native_with_npm_fallback() {
+            // SST 自家 install.sh 与 claude 同形态:bash 脚本、网络下载、装到 ~/.mimocode/bin。
+            let cmd = install_command_for("mimocode");
+            assert!(
+                cmd.contains("https://mimo.xiaomi.com/install"),
+                "should include official installer URL: {cmd}"
+            );
+            assert!(
+                cmd.contains("@mimo-ai/cli@latest"),
+                "should keep npm package as fallback: {cmd}"
+            );
+            assert!(cmd.contains("||"), "should chain fallback: {cmd}");
+            assert!(
+                !cmd.split("||").next().unwrap_or_default().contains('|'),
+                "native installer should avoid pipe: {cmd}"
+            );
+        }
+
+        #[test]
         fn codex_install_keeps_static_npm() {
             // OpenAI 暂无独立 native installer,保持原裸 npm,不引入兜底链(无东西可兜底)。
             let cmd = install_command_for("codex");
@@ -4724,6 +4856,52 @@ mod tests {
     fn opencode_extra_search_paths_deduplicates_bun_default_dir() {
         let home = PathBuf::from("/home/tester");
         let paths = opencode_extra_search_paths(&home, None, None, None);
+
+        let count = paths
+            .iter()
+            .filter(|path| path.as_path() == Path::new("/home/tester/.bun/bin"))
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn mimocode_extra_search_paths_includes_install_and_fallback_dirs() {
+        let home = PathBuf::from("/home/tester");
+        let install_dir = Some(std::ffi::OsString::from("/custom/mimocode/bin"));
+        let xdg_bin_dir = Some(std::ffi::OsString::from("/xdg/bin"));
+        let gopath =
+            std::env::join_paths([PathBuf::from("/go/path1"), PathBuf::from("/go/path2")]).ok();
+
+        let paths = mimocode_extra_search_paths(&home, install_dir, xdg_bin_dir, gopath);
+
+        assert_eq!(paths[0], PathBuf::from("/custom/mimocode/bin"));
+        assert_eq!(paths[1], PathBuf::from("/xdg/bin"));
+        assert!(paths.contains(&PathBuf::from("/home/tester/bin")));
+        assert!(paths.contains(&PathBuf::from("/home/tester/.mimocode/bin")));
+        assert!(paths.contains(&PathBuf::from("/home/tester/.bun/bin")));
+        assert!(paths.contains(&PathBuf::from("/home/tester/go/bin")));
+        assert!(paths.contains(&PathBuf::from("/go/path1/bin")));
+        assert!(paths.contains(&PathBuf::from("/go/path2/bin")));
+    }
+
+    #[test]
+    fn mimocode_extra_search_paths_deduplicates_repeated_entries() {
+        let home = PathBuf::from("/home/tester");
+        let same_dir = Some(std::ffi::OsString::from("/same/path"));
+
+        let paths = mimocode_extra_search_paths(&home, same_dir.clone(), same_dir, None);
+
+        let count = paths
+            .iter()
+            .filter(|path| path.as_path() == Path::new("/same/path"))
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn mimocode_extra_search_paths_deduplicates_bun_default_dir() {
+        let home = PathBuf::from("/home/tester");
+        let paths = mimocode_extra_search_paths(&home, None, None, None);
 
         let count = paths
             .iter()

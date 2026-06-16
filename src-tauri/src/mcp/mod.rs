@@ -9,6 +9,7 @@
 //! - `codex` - Codex MCP 同步和导入（含 TOML 转换）
 //! - `gemini` - Gemini MCP 同步和导入
 //! - `opencode` - OpenCode MCP 同步和导入（含 local/remote 格式转换）
+//! - `mimocode` - MimoCode MCP 同步和导入（含 local/remote 格式转换）
 //! - `hermes` - Hermes MCP 同步和导入
 
 mod claude;
@@ -16,6 +17,7 @@ mod codex;
 mod gemini;
 mod hermes;
 mod opencode;
+mod mimocode;
 mod validation;
 
 // 重新导出公共 API
@@ -33,4 +35,7 @@ pub use gemini::{
 pub use hermes::{import_from_hermes, remove_server_from_hermes, sync_single_server_to_hermes};
 pub use opencode::{
     import_from_opencode, remove_server_from_opencode, sync_single_server_to_opencode,
+};
+pub use mimocode::{
+    import_from_mimocode, remove_server_from_mimocode, sync_single_server_to_mimocode,
 };

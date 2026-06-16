@@ -182,6 +182,14 @@ impl Provider {
                     str_at(options.and_then(|o| o.get("apiKey"))),
                 )
             }
+            // MimoCode (OMO) nests credentials under `options` (the SDK options object).
+            AppType::MimoCode => {
+                let options = settings.get("options");
+                (
+                    str_at(options.and_then(|o| o.get("baseURL"))),
+                    str_at(options.and_then(|o| o.get("apiKey"))),
+                )
+            }
             // Claude and Claude Desktop both use the Anthropic-style env map, keeping
             // the OpenRouter/Google key fallbacks the JS-script path relies on.
             // Listed explicitly (not `_`) so a new AppType fails to compile here.
@@ -839,6 +847,22 @@ requires_openai_auth = true"#
 ///   "models": { "gpt-4o": { "name": "GPT-4o" } }
 /// }
 /// ```
+
+// ============================================================================
+// MimoCode 供应商配置结构
+// ============================================================================
+
+/// MimoCode 供应商的 settings_config 结构
+///
+/// MimoCode 使用 AI SDK 包名来指定供应商类型，与其他应用的配置格式不同。
+/// 配置示例：
+/// ```json
+/// {
+///   "npm": "@ai-sdk/openai-compatible",
+///   "options": { "baseURL": "https://api.example.com/v1", "apiKey": "sk-xxx" },
+///   "models": { "gpt-4o": { "name": "GPT-4o" } }
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenCodeProviderConfig {
     /// AI SDK 包名，如 "@ai-sdk/openai-compatible", "@ai-sdk/anthropic"
@@ -857,6 +881,24 @@ pub struct OpenCodeProviderConfig {
     pub models: HashMap<String, OpenCodeModel>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MimoCodeProviderConfig {
+    /// AI SDK 包名，如 "@ai-sdk/openai-compatible", "@ai-sdk/anthropic"
+    pub npm: String,
+
+    /// 供应商名称（可选，用于显示）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+
+    /// 供应商选项（API 密钥、基础 URL 等）
+    #[serde(default)]
+    pub options: MimoCodeProviderOptions,
+
+    /// 模型定义映射
+    #[serde(default)]
+    pub models: HashMap<String, MimoCodeModel>,
+}
+
 impl Default for OpenCodeProviderConfig {
     fn default() -> Self {
         Self {
@@ -868,9 +910,41 @@ impl Default for OpenCodeProviderConfig {
     }
 }
 
+impl Default for MimoCodeProviderConfig {
+    fn default() -> Self {
+        Self {
+            npm: "@ai-sdk/openai-compatible".to_string(),
+            name: None,
+            options: MimoCodeProviderOptions::default(),
+            models: HashMap::new(),
+        }
+    }
+}
+
 /// OpenCode 供应商选项
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OpenCodeProviderOptions {
+    /// API 基础 URL
+    #[serde(rename = "baseURL", skip_serializing_if = "Option::is_none")]
+    pub base_url: Option<String>,
+
+    /// API 密钥（支持环境变量引用，如 "{env:API_KEY}"）
+    #[serde(rename = "apiKey", skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+
+    /// 自定义请求头
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
+
+    /// 额外选项（timeout, setCacheKey 等）
+    /// 使用 flatten 捕获所有未明确定义的字段
+    #[serde(flatten, default, skip_serializing_if = "HashMap::is_empty")]
+    pub extra: HashMap<String, Value>,
+}
+
+/// MimoCode 供应商选项
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MimoCodeProviderOptions {
     /// API 基础 URL
     #[serde(rename = "baseURL", skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
@@ -909,6 +983,26 @@ pub struct OpenCodeModel {
     pub extra: HashMap<String, Value>,
 }
 
+/// MimoCode 模型定义
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MimoCodeModel {
+    /// 模型显示名称
+    pub name: String,
+
+    /// 模型限制（上下文和输出 token 数）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<MimoCodeModelLimit>,
+
+    /// 模型额外选项（provider 路由等）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options: Option<HashMap<String, Value>>,
+
+    /// 额外字段（cost、modalities、thinking、variants 等）
+    /// 使用 flatten 捕获所有未明确定义的字段
+    #[serde(flatten, default, skip_serializing_if = "HashMap::is_empty")]
+    pub extra: HashMap<String, Value>,
+}
+
 /// OpenCode 模型限制
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct OpenCodeModelLimit {
@@ -921,10 +1015,22 @@ pub struct OpenCodeModelLimit {
     pub output: Option<u64>,
 }
 
+/// MimoCode 模型限制
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MimoCodeModelLimit {
+    /// 上下文 token 限制
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<u64>,
+
+    /// 输出 token 限制
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<u64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, OpenCodeProviderConfig, Provider,
+        ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, OpenCodeProviderConfig,MimoCodeProviderConfig, Provider,
         ProviderManager, ProviderMeta, UniversalProvider,
     };
     use serde_json::json;
@@ -1234,6 +1340,18 @@ mod tests {
     }
 
     #[test]
+    fn mimocode_provider_config_defaults() {
+        let config = MimoCodeProviderConfig::default();
+        assert_eq!(config.npm, "@ai-sdk/openai-compatible");
+        assert!(config.name.is_none());
+        assert!(config.models.is_empty());
+        assert!(config.options.base_url.is_none());
+        assert!(config.options.api_key.is_none());
+        assert!(config.options.headers.is_none());
+        assert!(config.options.extra.is_empty());
+    }
+
+    #[test]
     fn universal_codex_provider_origin_base_url_adds_v1() {
         let mut p = UniversalProvider::new(
             "id".to_string(),
@@ -1420,6 +1538,27 @@ mod tests {
         }));
         assert_eq!(
             p.resolve_usage_credentials(&AppType::OpenCode),
+            (
+                "https://api.deepseek.com/v1".to_string(),
+                "sk-opencode".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn resolve_credentials_mimocode_options() {
+        // MimoCode (OMO) nests creds under options.{baseURL,apiKey}; useMimocodeFormState
+        // writes config.options.apiKey, so the stored provider keeps them there.
+        let p = provider_with(json!({
+            "npm": "@ai-sdk/openai-compatible",
+            "options": {
+                "baseURL": "https://api.deepseek.com/v1",
+                "apiKey": "sk-opencode",
+                "setCacheKey": true,
+            }
+        }));
+        assert_eq!(
+            p.resolve_usage_credentials(&AppType::MimoCode),
             (
                 "https://api.deepseek.com/v1".to_string(),
                 "sk-opencode".to_string()

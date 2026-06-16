@@ -23,7 +23,7 @@ use crate::store::AppState;
 // Re-export sub-module functions for external access
 pub use live::{
     import_default_config, import_hermes_providers_from_live, import_openclaw_providers_from_live,
-    import_opencode_providers_from_live, read_live_settings,
+    import_opencode_providers_from_live,import_mimocode_providers_from_live, read_live_settings,
     should_import_default_config_on_startup, sync_current_to_live,
 };
 
@@ -38,7 +38,7 @@ pub(crate) use live::{
 // Internal re-exports
 use live::{
     remove_hermes_provider_from_live, remove_openclaw_provider_from_live,
-    remove_opencode_provider_from_live, write_gemini_live,
+    remove_opencode_provider_from_live,remove_mimocode_provider_from_live, write_gemini_live,
 };
 use usage::validate_usage_script;
 
@@ -770,6 +770,26 @@ base_url = "http://localhost:8080"
 
     #[test]
     #[serial]
+    fn sync_current_provider_for_app_skips_db_only_mimocode_provider() {
+        with_test_home(|state, _| {
+            let provider = opencode_provider("db-only-mimocode");
+            ProviderService::add(state, AppType::MimoCode, provider.clone(), false)
+                .expect("seed db-only mimocode provider");
+
+            ProviderService::sync_current_provider_for_app(state, AppType::MimoCode)
+                .expect("sync additive mimocode providers");
+
+            let live_providers = crate::mimocode_config::get_providers()
+                .expect("read mimocode providers after sync");
+            assert!(
+                !live_providers.contains_key(&provider.id),
+                "db-only mimocode provider should not be written to live during sync"
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
     fn sync_current_provider_for_app_skips_db_only_openclaw_provider() {
         with_test_home(|state, _| {
             let provider = openclaw_provider("db-only-openclaw");
@@ -825,6 +845,41 @@ base_url = "http://localhost:8080"
 
     #[test]
     #[serial]
+    fn sync_current_provider_for_app_preserves_legacy_live_mimocode_provider() {
+        with_test_home(|state, _| {
+            let provider = opencode_provider("legacy-mimocode");
+            crate::mimocode_config::set_provider(&provider.id, provider.settings_config.clone())
+                .expect("seed mimocode live provider");
+            state
+                .db
+                .save_provider(AppType::MimoCode.as_str(), &provider)
+                .expect("seed legacy mimocode provider in db");
+
+            let mut updated = provider.clone();
+            updated.settings_config["options"]["apiKey"] = Value::String("updated-key".to_string());
+            state
+                .db
+                .save_provider(AppType::MimoCode.as_str(), &updated)
+                .expect("update legacy mimocode provider in db");
+
+            ProviderService::sync_current_provider_for_app(state, AppType::MimoCode)
+                .expect("sync legacy mimocode provider");
+
+            let live_providers =
+                crate::mimocode_config::get_providers().expect("read mimocode providers");
+            assert_eq!(
+                live_providers
+                    .get(&provider.id)
+                    .and_then(|config| config.get("options"))
+                    .and_then(|options| options.get("apiKey")),
+                Some(&Value::String("updated-key".to_string())),
+                "legacy provider that already exists in live should still be synced"
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
     fn sync_current_provider_for_app_restores_legacy_opencode_provider_after_live_reset() {
         with_test_home(|state, _| {
             let provider = opencode_provider("legacy-opencode-reset");
@@ -841,6 +896,28 @@ base_url = "http://localhost:8080"
             assert!(
                 live_providers.contains_key(&provider.id),
                 "legacy opencode provider should be restored when live config is reset"
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn sync_current_provider_for_app_restores_legacy_mimocode_provider_after_live_reset() {
+        with_test_home(|state, _| {
+            let provider = opencode_provider("legacy-mimocode-reset");
+            state
+                .db
+                .save_provider(AppType::MimoCode.as_str(), &provider)
+                .expect("seed legacy mimocode provider in db");
+
+            ProviderService::sync_current_provider_for_app(state, AppType::MimoCode)
+                .expect("sync legacy mimocode provider after reset");
+
+            let live_providers =
+                crate::mimocode_config::get_providers().expect("read mimocode providers");
+            assert!(
+                live_providers.contains_key(&provider.id),
+                "legacy mimocode provider should be restored when live config is reset"
             );
         });
     }
@@ -890,6 +967,34 @@ base_url = "http://localhost:8080"
                 .get_provider_by_id(&provider.id, AppType::OpenCode.as_str())
                 .expect("query imported opencode provider")
                 .expect("imported opencode provider should exist");
+            assert_eq!(
+                saved
+                    .meta
+                    .as_ref()
+                    .and_then(|meta| meta.live_config_managed),
+                Some(true),
+                "providers imported from live should be treated as live-managed"
+            );
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn import_mimocode_providers_from_live_marks_provider_as_live_managed() {
+        with_test_home(|state, _| {
+            let provider = opencode_provider("imported-mimocode");
+            crate::mimocode_config::set_provider(&provider.id, provider.settings_config.clone())
+                .expect("seed mimocode live provider");
+
+            let imported = import_mimocode_providers_from_live(state)
+                .expect("import mimocode providers from live");
+            assert_eq!(imported, 1);
+
+            let saved = state
+                .db
+                .get_provider_by_id(&provider.id, AppType::MimoCode.as_str())
+                .expect("query imported mimocode provider")
+                .expect("imported mimocode provider should exist");
             assert_eq!(
                 saved
                     .meta
@@ -994,6 +1099,34 @@ base_url = "http://localhost:8080"
                     "{category} updates should persist in the database"
                 );
             }
+            for category in ["omo", "omo-slim"] {
+                let provider = opencode_omo_provider(&format!("{category}-provider"), category);
+                state
+                    .db
+                    .save_provider(AppType::MimoCode.as_str(), &provider)
+                    .unwrap_or_else(|err| panic!("seed {category} provider: {err}"));
+
+                let mut updated = provider.clone();
+                updated.name = format!("Updated {category}");
+                updated.settings_config["agents"]["writer"]["model"] =
+                    Value::String(format!("{category}-next-model"));
+
+                ProviderService::update(state, AppType::MimoCode, None, updated)
+                    .unwrap_or_else(|err| panic!("update {category} provider: {err}"));
+
+                let saved = state
+                    .db
+                    .get_provider_by_id(&provider.id, AppType::MimoCode.as_str())
+                    .unwrap_or_else(|err| panic!("query updated {category} provider: {err}"))
+                    .unwrap_or_else(|| panic!("{category} provider should exist"));
+
+                assert_eq!(saved.name, format!("Updated {category}"));
+                assert_eq!(
+                    saved.settings_config["agents"]["writer"]["model"],
+                    Value::String(format!("{category}-next-model")),
+                    "{category} updates should persist in the database"
+                );
+            }
         });
     }
 
@@ -1045,6 +1178,51 @@ base_url = "http://localhost:8080"
                     "{category} top-level config should reflect updated otherFields"
                 );
             }
+
+            for category in ["omo", "omo-slim"] {
+                let provider = opencode_omo_provider(&format!("{category}-current"), category);
+                state
+                    .db
+                    .save_provider(AppType::MimoCode.as_str(), &provider)
+                    .unwrap_or_else(|err| panic!("seed current {category} provider: {err}"));
+                state
+                    .db
+                    .set_omo_provider_current(AppType::MimoCode.as_str(), &provider.id, category)
+                    .unwrap_or_else(|err| panic!("set current {category} provider: {err}"));
+
+                let mut updated = provider.clone();
+                updated.name = format!("Current {category} updated");
+                updated.settings_config["agents"]["writer"]["model"] =
+                    Value::String(format!("{category}-saved-model"));
+                updated.settings_config["otherFields"]["theme"] =
+                    Value::String(format!("{category}-light"));
+
+                ProviderService::update(state, AppType::MimoCode, None, updated)
+                    .unwrap_or_else(|err| panic!("update current {category} provider: {err}"));
+
+                let saved = state
+                    .db
+                    .get_provider_by_id(&provider.id, AppType::MimoCode.as_str())
+                    .unwrap_or_else(|err| panic!("query current {category} provider: {err}"))
+                    .unwrap_or_else(|| panic!("current {category} provider should exist"));
+                assert_eq!(saved.name, format!("Current {category} updated"));
+
+                let written = fs::read_to_string(omo_config_path(home, category))
+                    .unwrap_or_else(|err| panic!("read written {category} config: {err}"));
+                let written_json: Value = serde_json::from_str(&written)
+                    .unwrap_or_else(|err| panic!("parse written {category} config: {err}"));
+
+                assert_eq!(
+                    written_json["agents"]["writer"]["model"],
+                    Value::String(format!("{category}-saved-model")),
+                    "{category} config should be written from the saved provider state"
+                );
+                assert_eq!(
+                    written_json["theme"],
+                    Value::String(format!("{category}-light")),
+                    "{category} top-level config should reflect updated otherFields"
+                );
+            }
         });
     }
 
@@ -1052,39 +1230,75 @@ base_url = "http://localhost:8080"
     #[serial]
     fn update_current_omo_variant_does_not_persist_database_when_file_write_fails() {
         with_test_home(|state, home| {
-            let provider = opencode_omo_provider("omo-current", "omo");
+            let opencodeProvider = opencode_omo_provider("omo-current", "omo");
             state
                 .db
-                .save_provider(AppType::OpenCode.as_str(), &provider)
+                .save_provider(AppType::OpenCode.as_str(), &opencodeProvider)
                 .unwrap_or_else(|err| panic!("seed current omo provider: {err}"));
             state
                 .db
-                .set_omo_provider_current(AppType::OpenCode.as_str(), &provider.id, "omo")
+                .set_omo_provider_current(AppType::OpenCode.as_str(), &opencodeProvider.id, "omo")
                 .unwrap_or_else(|err| panic!("set current omo provider: {err}"));
 
-            let config_dir = home.join(".config").join("opencode");
-            fs::create_dir_all(config_dir.parent().expect("config dir parent"))
+            let opencode_config_dir = home.join(".config").join("opencode");
+            fs::create_dir_all(opencode_config_dir.parent().expect("config dir parent"))
                 .expect("create .config dir");
-            fs::write(&config_dir, "not a directory").expect("block opencode config dir");
+            fs::write(&opencode_config_dir, "not a directory").expect("block opencode config dir");
 
-            let mut updated = provider.clone();
-            updated.name = "Current omo updated".to_string();
-            updated.settings_config["agents"]["writer"]["model"] =
+            let mut opencode_updated = opencodeProvider.clone();
+            opencode_updated.name = "Current omo updated".to_string();
+            opencode_updated.settings_config["agents"]["writer"]["model"] =
                 Value::String("omo-saved-model".to_string());
 
-            ProviderService::update(state, AppType::OpenCode, None, updated)
+            ProviderService::update(state, AppType::OpenCode, None, opencode_updated)
                 .expect_err("update should fail when current omo file write fails");
 
-            let saved = state
+            let opencode_saved = state
                 .db
-                .get_provider_by_id(&provider.id, AppType::OpenCode.as_str())
+                .get_provider_by_id(&opencodeProvider.id, AppType::OpenCode.as_str())
                 .unwrap_or_else(|err| panic!("query current omo provider: {err}"))
                 .unwrap_or_else(|| panic!("current omo provider should exist"));
 
-            assert_eq!(saved.name, provider.name);
+            assert_eq!(opencode_saved.name, opencodeProvider.name);
             assert_eq!(
-                saved.settings_config["agents"]["writer"]["model"],
-                provider.settings_config["agents"]["writer"]["model"],
+                opencode_saved.settings_config["agents"]["writer"]["model"],
+                opencodeProvider.settings_config["agents"]["writer"]["model"],
+                "database should remain unchanged when file write fails"
+            );
+
+            let mimocodeProvider = opencode_omo_provider("omo-current", "omo");
+            state
+                .db
+                .save_provider(AppType::MimoCode.as_str(), &mimocodeProvider)
+                .unwrap_or_else(|err| panic!("seed current omo provider: {err}"));
+            state
+                .db
+                .set_omo_provider_current(AppType::MimoCode.as_str(), &mimocodeProvider.id, "omo")
+                .unwrap_or_else(|err| panic!("set current omo provider: {err}"));
+
+            let mimocode_config_dir = home.join(".config").join("mimocode");
+            fs::create_dir_all(mimocode_config_dir.parent().expect("config dir parent"))
+                .expect("create .config dir");
+            fs::write(&mimocode_config_dir, "not a directory").expect("block mimocode config dir");
+
+            let mut mimocode_updated = mimocodeProvider.clone();
+            mimocode_updated.name = "Current omo updated".to_string();
+            mimocode_updated.settings_config["agents"]["writer"]["model"] =
+                Value::String("omo-saved-model".to_string());
+
+            ProviderService::update(state, AppType::MimoCode, None, mimocode_updated)
+                .expect_err("update should fail when current omo file write fails");
+
+            let mimocode_saved = state
+                .db
+                .get_provider_by_id(&mimocodeProvider.id, AppType::MimoCode.as_str())
+                .unwrap_or_else(|err| panic!("query current omo provider: {err}"))
+                .unwrap_or_else(|| panic!("current omo provider should exist"));
+
+            assert_eq!(mimocode_saved.name, mimocodeProvider.name);
+            assert_eq!(
+                mimocode_saved.settings_config["agents"]["writer"]["model"],
+                mimocodeProvider.settings_config["agents"]["writer"]["model"],
                 "database should remain unchanged when file write fails"
             );
         });
@@ -1102,6 +1316,15 @@ base_url = "http://localhost:8080"
             state
                 .db
                 .set_omo_provider_current(AppType::OpenCode.as_str(), &provider.id, "omo")
+                .unwrap_or_else(|err| panic!("set current omo provider: {err}"));
+
+            state
+                .db
+                .save_provider(AppType::MimoCode.as_str(), &provider)
+                .unwrap_or_else(|err| panic!("seed current omo provider: {err}"));
+            state
+                .db
+                .set_omo_provider_current(AppType::MimoCode.as_str(), &provider.id, "omo")
                 .unwrap_or_else(|err| panic!("set current omo provider: {err}"));
 
             let config_path = omo_config_path(home, "omo");
@@ -1124,6 +1347,9 @@ base_url = "http://localhost:8080"
             let opencode_config_path = home.join(".config").join("opencode").join("opencode.json");
             fs::write(&opencode_config_path, "{ invalid json").expect("seed malformed opencode");
 
+            let mimocode_config_path = home.join(".config").join("mimocode").join("mimocode.json");
+            fs::write(&mimocode_config_path, "{ invalid json").expect("seed malformed mimocode");
+
             let mut updated = provider.clone();
             updated.name = "Current omo updated".to_string();
             updated.settings_config["agents"]["writer"]["model"] =
@@ -1137,6 +1363,22 @@ base_url = "http://localhost:8080"
             let saved = state
                 .db
                 .get_provider_by_id(&provider.id, AppType::OpenCode.as_str())
+                .unwrap_or_else(|err| panic!("query current omo provider: {err}"))
+                .unwrap_or_else(|| panic!("current omo provider should exist"));
+
+            let mut updated = provider.clone();
+            updated.name = "Current omo updated".to_string();
+            updated.settings_config["agents"]["writer"]["model"] =
+                Value::String("omo-saved-model".to_string());
+            updated.settings_config["otherFields"]["theme"] =
+                Value::String("omo-light".to_string());
+
+            ProviderService::update(state, AppType::MimoCode, None, updated)
+                .expect_err("update should fail when plugin sync fails");
+
+            let saved = state
+                .db
+                .get_provider_by_id(&provider.id, AppType::MimoCode.as_str())
                 .unwrap_or_else(|err| panic!("query current omo provider: {err}"))
                 .unwrap_or_else(|| panic!("current omo provider should exist"));
 
@@ -1248,6 +1490,13 @@ impl ProviderService {
                 // Users must explicitly switch/apply an OMO provider to activate it.
                 return Ok(true);
             }
+            if matches!(app_type, AppType::MimoCode)
+                && matches!(provider.category.as_deref(), Some("omo") | Some("omo-slim"))
+            {
+                // Do not auto-enable newly added OMO / OMO Slim providers.
+                // Users must explicitly switch/apply an OMO provider to activate it.
+                return Ok(true);
+            }
             if !add_to_live {
                 return Ok(true);
             }
@@ -1316,6 +1565,17 @@ impl ProviderService {
                 ));
             }
 
+            if matches!(app_type, AppType::MimoCode)
+                && matches!(
+                    existing_provider.category.as_deref(),
+                    Some("omo") | Some("omo-slim")
+                )
+            {
+                return Err(AppError::Message(
+                    "Provider key cannot be changed for OMO/OMO Slim providers".to_string(),
+                ));
+            }
+
             let original_in_live = Self::check_live_config_exists(
                 &app_type,
                 &original_id,
@@ -1360,7 +1620,7 @@ impl ProviderService {
         // Additive mode apps (OpenCode, OpenClaw): only sync to live when the provider
         // already exists in live config. Editing a DB-only provider must not auto-add it.
         if app_type.is_additive_mode() {
-            let omo_variant = if matches!(app_type, AppType::OpenCode) {
+            let omo_variant = if matches!(app_type, AppType::OpenCode)||matches!(app_type, AppType::MimoCode) {
                 match provider.category.as_deref() {
                     Some("omo") => Some(&crate::services::omo::STANDARD),
                     Some("omo-slim") => Some(&crate::services::omo::SLIM),
@@ -1483,7 +1743,7 @@ impl ProviderService {
             // Single DB read shared across all additive-mode sub-paths below.
             let existing = state.db.get_provider_by_id(id, app_type.as_str())?;
 
-            if matches!(app_type, AppType::OpenCode) {
+            if matches!(app_type, AppType::OpenCode) || matches!(app_type, AppType::MimoCode) {
                 let provider_category = existing.as_ref().and_then(|p| p.category.clone());
                 let omo_variant = match provider_category.as_deref() {
                     Some("omo") => Some(&crate::services::omo::STANDARD),
@@ -1517,6 +1777,7 @@ impl ProviderService {
             if Self::check_live_config_exists(&app_type, id, live_managed)? {
                 match app_type {
                     AppType::OpenCode => remove_opencode_provider_from_live(id)?,
+                    AppType::MimoCode => remove_mimocode_provider_from_live(id)?,
                     AppType::OpenClaw => remove_openclaw_provider_from_live(id)?,
                     AppType::Hermes => remove_hermes_provider_from_live(id)?,
                     _ => {}
@@ -1578,6 +1839,34 @@ impl ProviderService {
                     remove_opencode_provider_from_live(id)?;
                 }
             }
+            AppType::MimoCode => {
+                let provider_category = state
+                    .db
+                    .get_provider_by_id(id, app_type.as_str())?
+                    .and_then(|p| p.category);
+
+                let omo_variant = match provider_category.as_deref() {
+                    Some("omo") => Some(&crate::services::omo::STANDARD),
+                    Some("omo-slim") => Some(&crate::services::omo::SLIM),
+                    _ => None,
+                };
+                if let Some(variant) = omo_variant {
+                    state
+                        .db
+                        .clear_omo_provider_current(app_type.as_str(), id, variant.category)?;
+                    let still_has_current = state
+                        .db
+                        .get_current_omo_provider("mimocode", variant.category)?
+                        .is_some();
+                    if still_has_current {
+                        crate::services::OmoService::write_config_to_file(state, variant)?;
+                    } else {
+                        crate::services::OmoService::delete_config_file(variant)?;
+                    }
+                } else {
+                    remove_mimocode_provider_from_live(id)?;
+                }
+            }
             AppType::OpenClaw => {
                 remove_openclaw_provider_from_live(id)?;
             }
@@ -1624,8 +1913,18 @@ impl ProviderService {
             return Self::switch_normal(state, app_type, id, &providers);
         }
 
+        if matches!(app_type, AppType::MimoCode) && _provider.category.as_deref() == Some("omo") {
+            return Self::switch_normal(state, app_type, id, &providers);
+        }
+
         // OMO Slim providers are switched through their own exclusive path.
         if matches!(app_type, AppType::OpenCode)
+            && _provider.category.as_deref() == Some("omo-slim")
+        {
+            return Self::switch_normal(state, app_type, id, &providers);
+        }
+
+        if matches!(app_type, AppType::MimoCode)
             && _provider.category.as_deref() == Some("omo-slim")
         {
             return Self::switch_normal(state, app_type, id, &providers);
@@ -1710,7 +2009,7 @@ impl ProviderService {
             .ok_or_else(|| AppError::Message(format!("供应商 {id} 不存在")))?;
 
         // OMO ↔ OMO Slim are mutually exclusive; activating one removes the other's config file.
-        if matches!(app_type, AppType::OpenCode) {
+        if matches!(app_type, AppType::OpenCode)||matches!(app_type, AppType::MimoCode) {
             let omo_pair = match provider.category.as_deref() {
                 Some("omo") => Some((&crate::services::omo::STANDARD, &crate::services::omo::SLIM)),
                 Some("omo-slim") => {
@@ -1807,6 +2106,7 @@ impl ProviderService {
             if let Err(e) = state.db.save_provider(app_type.as_str(), &updated) {
                 let rollback_result = match app_type {
                     AppType::OpenCode => remove_opencode_provider_from_live(&provider.id),
+                    AppType::MimoCode => remove_mimocode_provider_from_live(&provider.id),
                     AppType::OpenClaw => remove_openclaw_provider_from_live(&provider.id),
                     AppType::Hermes => remove_hermes_provider_from_live(&provider.id),
                     _ => Ok(()),
@@ -1987,6 +2287,7 @@ impl ProviderService {
             AppType::Codex => Self::extract_codex_common_config(&provider.settings_config),
             AppType::Gemini => Self::extract_gemini_common_config(&provider.settings_config),
             AppType::OpenCode => Self::extract_opencode_common_config(&provider.settings_config),
+            AppType::MimoCode => Self::extract_mimocode_common_config(&provider.settings_config),
             AppType::OpenClaw => Self::extract_openclaw_common_config(&provider.settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
         }
@@ -2003,6 +2304,7 @@ impl ProviderService {
             AppType::Codex => Self::extract_codex_common_config(settings_config),
             AppType::Gemini => Self::extract_gemini_common_config(settings_config),
             AppType::OpenCode => Self::extract_opencode_common_config(settings_config),
+            AppType::MimoCode => Self::extract_mimocode_common_config(settings_config),
             AppType::OpenClaw => Self::extract_openclaw_common_config(settings_config),
             AppType::Hermes => Ok(String::new()), // Hermes doesn't use common config snippets
         }
@@ -2144,6 +2446,29 @@ impl ProviderService {
     /// Extract common config for OpenCode (JSON format)
     fn extract_opencode_common_config(settings: &Value) -> Result<String, AppError> {
         // OpenCode uses a different config structure with npm, options, models
+        // For common config, we exclude provider-specific fields like apiKey
+        let mut config = settings.clone();
+
+        // Remove provider-specific fields
+        if let Some(obj) = config.as_object_mut() {
+            if let Some(options) = obj.get_mut("options").and_then(|v| v.as_object_mut()) {
+                options.remove("apiKey");
+                options.remove("baseURL");
+            }
+            // Keep npm and models as they might be common
+        }
+
+        if config.is_null() || (config.is_object() && config.as_object().unwrap().is_empty()) {
+            return Ok("{}".to_string());
+        }
+
+        serde_json::to_string_pretty(&config)
+            .map_err(|e| AppError::Message(format!("Serialization failed: {e}")))
+    }
+
+    /// Extract common config for MimoCode (JSON format)
+    fn extract_mimocode_common_config(settings: &Value) -> Result<String, AppError> {
+        // MimoCode uses a different config structure with npm, options, models
         // For common config, we exclude provider-specific fields like apiKey
         let mut config = settings.clone();
 
@@ -2372,6 +2697,18 @@ impl ProviderService {
                     ));
                 }
             }
+
+            AppType::MimoCode => {
+                // MimoCode uses a different config structure: { npm, options, models }
+                // Basic validation - must be an object
+                if !provider.settings_config.is_object() {
+                    return Err(AppError::localized(
+                        "provider.mimocode.settings.not_object",
+                        "MimoCode 配置必须是 JSON 对象",
+                        "MimoCode configuration must be a JSON object",
+                    ));
+                }
+            }
             AppType::OpenClaw => {
                 // OpenClaw uses config structure: { baseUrl, apiKey, api, models }
                 // Basic validation - must be an object
@@ -2561,6 +2898,40 @@ impl ProviderService {
                     .ok_or_else(|| {
                         AppError::localized(
                             "provider.opencode.api_key.missing",
+                            "缺少 API Key",
+                            "API key is missing",
+                        )
+                    })?
+                    .to_string();
+
+                let base_url = options
+                    .get("baseURL")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                Ok((api_key, base_url))
+            }
+            AppType::MimoCode => {
+                // MimoCode uses options.apiKey and options.baseURL
+                let options = provider
+                    .settings_config
+                    .get("options")
+                    .and_then(|v| v.as_object())
+                    .ok_or_else(|| {
+                        AppError::localized(
+                            "provider.mimocode.options.missing",
+                            "配置格式错误: 缺少 options",
+                            "Invalid configuration: missing options section",
+                        )
+                    })?;
+
+                let api_key = options
+                    .get("apiKey")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        AppError::localized(
+                            "provider.mimocode.api_key.missing",
                             "缺少 API Key",
                             "API key is missing",
                         )

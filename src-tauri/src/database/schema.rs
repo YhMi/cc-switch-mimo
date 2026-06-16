@@ -66,7 +66,7 @@ impl Database {
             description TEXT, homepage TEXT, docs TEXT, tags TEXT NOT NULL DEFAULT '[]',
             enabled_claude BOOLEAN NOT NULL DEFAULT 0, enabled_codex BOOLEAN NOT NULL DEFAULT 0,
             enabled_gemini BOOLEAN NOT NULL DEFAULT 0, enabled_opencode BOOLEAN NOT NULL DEFAULT 0,
-            enabled_hermes BOOLEAN NOT NULL DEFAULT 0
+            enabled_mimocode BOOLEAN NOT NULL DEFAULT 0,enabled_hermes BOOLEAN NOT NULL DEFAULT 0
         )",
             [],
         )
@@ -94,6 +94,7 @@ impl Database {
             enabled_codex BOOLEAN NOT NULL DEFAULT 0,
             enabled_gemini BOOLEAN NOT NULL DEFAULT 0,
             enabled_opencode BOOLEAN NOT NULL DEFAULT 0,
+            enabled_mimocode BOOLEAN NOT NULL DEFAULT 0,
             enabled_hermes BOOLEAN NOT NULL DEFAULT 0,
             installed_at INTEGER NOT NULL DEFAULT 0,
             content_hash TEXT,
@@ -410,39 +411,44 @@ impl Database {
                         Self::set_user_version(conn, 4)?;
                     }
                     4 => {
-                        log::info!("迁移数据库从 v4 到 v5（计费模式支持）");
+                        log::info!("迁移数据库从 v4 到 v5（MimoCode 支持）");
                         Self::migrate_v4_to_v5(conn)?;
                         Self::set_user_version(conn, 5)?;
                     }
                     5 => {
-                        log::info!("迁移数据库从 v5 到 v6（使用量聚合表 + Copilot 模板类型统一）");
+                        log::info!("迁移数据库从 v5 到 v6（计费模式支持）");
                         Self::migrate_v5_to_v6(conn)?;
                         Self::set_user_version(conn, 6)?;
                     }
                     6 => {
-                        log::info!("迁移数据库从 v6 到 v7（Skills 更新检测支持）");
+                        log::info!("迁移数据库从 v6 到 v7（使用量聚合表 + Copilot 模板类型统一）");
                         Self::migrate_v6_to_v7(conn)?;
                         Self::set_user_version(conn, 7)?;
                     }
                     7 => {
-                        log::info!("迁移数据库从 v7 到 v8（会话日志使用追踪 + 修正模型定价）");
+                        log::info!("迁移数据库从 v7 到 v8（Skills 更新检测支持）");
                         Self::migrate_v7_to_v8(conn)?;
                         Self::set_user_version(conn, 8)?;
                     }
                     8 => {
-                        log::info!("迁移数据库从 v8 到 v9（全面补充模型定价）");
+                        log::info!("迁移数据库从 v8 到 v9（会话日志使用追踪 + 修正模型定价）");
                         Self::migrate_v8_to_v9(conn)?;
                         Self::set_user_version(conn, 9)?;
                     }
                     9 => {
-                        log::info!("迁移数据库从 v9 到 v10（添加 Hermes Agent 支持）");
+                        log::info!("迁移数据库从 v9 到 v10（全面补充模型定价）");
                         Self::migrate_v9_to_v10(conn)?;
                         Self::set_user_version(conn, 10)?;
                     }
                     10 => {
-                        log::info!("迁移数据库从 v10 到 v11（usage_daily_rollups 保留 request_model 维度）");
+                        log::info!("迁移数据库从 v10 到 v11（添加 Hermes Agent 支持）");
                         Self::migrate_v10_to_v11(conn)?;
                         Self::set_user_version(conn, 11)?;
+                    }
+                    11 => {
+                        log::info!("迁移数据库从 v11 到 v12（usage_daily_rollups 保留 request_model 维度）");
+                        Self::migrate_v11_to_v12(conn)?;
+                        Self::set_user_version(conn, 12)?;
                     }
                     _ => {
                         return Err(AppError::Database(format!(
@@ -997,8 +1003,32 @@ impl Database {
         Ok(())
     }
 
-    /// v4 -> v5 迁移：新增计费模式配置与请求模型字段
+    /// v4 -> v5 迁移：添加 MimoCode 支持
+    ///
+    /// 为 mcp_servers 和 skills 表添加 enabled_mimocode 列。
     fn migrate_v4_to_v5(conn: &Connection) -> Result<(), AppError> {
+        // 为 mcp_servers 表添加 enabled_mimocode 列
+        Self::add_column_if_missing(
+            conn,
+            "mcp_servers",
+            "enabled_mimocode",
+            "BOOLEAN NOT NULL DEFAULT 0",
+        )?;
+
+        // 为 skills 表添加 enabled_mimocode 列
+        Self::add_column_if_missing(
+            conn,
+            "skills",
+            "enabled_mimocode",
+            "BOOLEAN NOT NULL DEFAULT 0",
+        )?;
+
+        log::info!("v4 -> v5 迁移完成：已添加 MimoCode 支持");
+        Ok(())
+    }
+
+    /// v5 -> v6 迁移：新增计费模式配置与请求模型字段
+    fn migrate_v5_to_v6(conn: &Connection) -> Result<(), AppError> {
         if Self::table_exists(conn, "proxy_config")? {
             Self::add_column_if_missing(
                 conn,
@@ -1017,12 +1047,12 @@ impl Database {
             Self::add_column_if_missing(conn, "proxy_request_logs", "request_model", "TEXT")?;
         }
 
-        log::info!("v4 -> v5 迁移完成：已添加计费模式与请求模型字段");
+        log::info!("v5 -> v6 迁移完成：已添加计费模式与请求模型字段");
         Ok(())
     }
 
-    /// v5 -> v6 迁移：添加使用量日聚合表 + 统一 Copilot 模板类型
-    fn migrate_v5_to_v6(conn: &Connection) -> Result<(), AppError> {
+    /// v6 -> v7 迁移：添加使用量日聚合表 + 统一 Copilot 模板类型
+    fn migrate_v6_to_v7(conn: &Connection) -> Result<(), AppError> {
         // 1. 添加使用量日聚合表
         conn.execute(
             "CREATE TABLE IF NOT EXISTS usage_daily_rollups (
@@ -1092,12 +1122,12 @@ impl Database {
             .map_err(|e| AppError::Database(e.to_string()))?;
         }
 
-        log::info!("v5 -> v6 迁移完成：已添加使用量日聚合表，统一 copilot 模板类型");
+        log::info!("v6 -> v7 迁移完成：已添加使用量日聚合表，统一 copilot 模板类型");
         Ok(())
     }
 
-    /// v6 -> v7: Skills 更新检测支持（content_hash + updated_at）
-    fn migrate_v6_to_v7(conn: &Connection) -> Result<(), AppError> {
+    /// v7 -> v8: Skills 更新检测支持（content_hash + updated_at）
+    fn migrate_v7_to_v8(conn: &Connection) -> Result<(), AppError> {
         if Self::table_exists(conn, "skills")? {
             Self::add_column_if_missing(conn, "skills", "content_hash", "TEXT")?;
             Self::add_column_if_missing(
@@ -1107,12 +1137,12 @@ impl Database {
                 "INTEGER NOT NULL DEFAULT 0",
             )?;
         }
-        log::info!("v6 -> v7 迁移完成：已添加 content_hash 和 updated_at 列");
+        log::info!("v7 -> v8 迁移完成：已添加 content_hash 和 updated_at 列");
         Ok(())
     }
 
-    /// v7 -> v8: 会话日志使用追踪（无代理模式统计支持）
-    fn migrate_v7_to_v8(conn: &Connection) -> Result<(), AppError> {
+    /// v8 -> v9: 会话日志使用追踪（无代理模式统计支持）
+    fn migrate_v8_to_v9(conn: &Connection) -> Result<(), AppError> {
         // 1. 为 proxy_request_logs 添加 data_source 列，区分数据来源
         if Self::table_exists(conn, "proxy_request_logs")? {
             Self::add_column_if_missing(
@@ -1167,12 +1197,12 @@ impl Database {
             }
         }
 
-        log::info!("v7 -> v8 迁移完成：data_source 列、session_log_sync 表、修正 13 个模型定价");
+        log::info!("v8 -> v9 迁移完成：data_source 列、session_log_sync 表、修正 13 个模型定价");
         Ok(())
     }
 
-    /// v8 → v9: 全面补充模型定价（清空 + 重新 seed）
-    fn migrate_v8_to_v9(conn: &Connection) -> Result<(), AppError> {
+    /// v9 → v10: 全面补充模型定价（清空 + 重新 seed）
+    fn migrate_v9_to_v10(conn: &Connection) -> Result<(), AppError> {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS model_pricing (
                 model_id TEXT PRIMARY KEY, display_name TEXT NOT NULL,
@@ -1186,12 +1216,12 @@ impl Database {
         conn.execute("DELETE FROM model_pricing", [])
             .map_err(|e| AppError::Database(format!("清空模型定价失败: {e}")))?;
         Self::seed_model_pricing(conn)?;
-        log::info!("v8 -> v9 迁移完成：已刷新全部模型定价数据");
+        log::info!("v9 -> v10 迁移完成：已刷新全部模型定价数据");
         Ok(())
     }
 
-    /// v9 -> v10 迁移：添加 Hermes Agent 支持
-    fn migrate_v9_to_v10(conn: &Connection) -> Result<(), AppError> {
+    /// v10 -> v11 迁移：添加 Hermes Agent 支持
+    fn migrate_v10_to_v11(conn: &Connection) -> Result<(), AppError> {
         Self::add_column_if_missing(
             conn,
             "mcp_servers",
@@ -1209,17 +1239,17 @@ impl Database {
             )?;
         }
 
-        log::info!("v9 -> v10 迁移完成：已添加 Hermes Agent 支持");
+        log::info!("v10 -> v11 迁移完成：已添加 Hermes Agent 支持");
         Ok(())
     }
 
-    /// v10 -> v11：usage_daily_rollups 增加 request_model 维度（进入主键），
+    /// v11 -> v12：usage_daily_rollups 增加 request_model 维度（进入主键），
     /// proxy_request_logs 增加 pricing_model 列（写入时的计价基准，回填依据）。
     ///
     /// 路由接管下 model（真实上游模型）≠ request_model（客户端别名），
     /// 旧 rollup 只按 model 聚合，明细 prune 后映射关系永久丢失、计费不可审计。
     /// SQLite 改主键必须重建表；历史行的 request_model 已不可知，填 ''。
-    fn migrate_v10_to_v11(conn: &Connection) -> Result<(), AppError> {
+    fn migrate_v11_to_v12(conn: &Connection) -> Result<(), AppError> {
         // proxy_request_logs.pricing_model：NULL = v11 前的历史行（回填走
         // model → 占位符回退 request_model 的旧逻辑），'' = 未计价的错误行
         if Self::table_exists(conn, "proxy_request_logs")? {
@@ -1227,7 +1257,7 @@ impl Database {
         }
 
         if !Self::table_exists(conn, "usage_daily_rollups")? {
-            log::info!("v10 -> v11：usage_daily_rollups 不存在，跳过重建");
+            log::info!("v11 -> v12：usage_daily_rollups 不存在，跳过重建");
             return Ok(());
         }
 
@@ -1261,11 +1291,11 @@ impl Database {
              DROP TABLE usage_daily_rollups_v10;",
         )
         .map_err(|e| {
-            AppError::Database(format!("v10 -> v11 重建 usage_daily_rollups 失败: {e}"))
+            AppError::Database(format!("v11 -> v12 重建 usage_daily_rollups 失败: {e}"))
         })?;
 
         log::info!(
-            "v10 -> v11 迁移完成：usage_daily_rollups 已保留 request_model/pricing_model 维度"
+            "v11 -> v12 迁移完成：usage_daily_rollups 已保留 request_model/pricing_model 维度"
         );
         Ok(())
     }

@@ -313,7 +313,8 @@ fn schema_migration_v4_adds_pricing_model_columns() {
             enabled_claude INTEGER NOT NULL DEFAULT 0,
             enabled_codex INTEGER NOT NULL DEFAULT 0,
             enabled_gemini INTEGER NOT NULL DEFAULT 0,
-            enabled_opencode INTEGER NOT NULL DEFAULT 0
+            enabled_opencode INTEGER NOT NULL DEFAULT 0,
+            enabled_mimocode INTEGER NOT NULL DEFAULT 0
         );
         "#,
     )

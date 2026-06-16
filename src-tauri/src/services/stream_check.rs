@@ -200,6 +200,10 @@ impl StreamCheckService {
                 let npm = Self::extract_opencode_npm(provider);
                 Self::resolve_opencode_base_url(provider, npm.as_deref())
             }
+            AppType::MimoCode => {
+                let npm = Self::extract_mimocode_npm(provider);
+                Self::resolve_mimocode_base_url(provider, npm.as_deref())
+            }
             AppType::OpenClaw => Self::extract_openclaw_base_url(provider),
             AppType::Hermes => Self::extract_hermes_base_url(provider),
             AppType::ClaudeDesktop => ClaudeAdapter::new()
@@ -390,6 +394,53 @@ impl StreamCheckService {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
     }
+
+    /// MimoCode: `{ npm, options: { baseURL, apiKey }, ... }`
+    ///
+    /// 用户未显式填 `options.baseURL` 时，按 `npm`（AI SDK 包）回退到包自带默认端点。
+    /// `@ai-sdk/openai-compatible` 无默认端点，必须显式填。
+    fn resolve_mimocode_base_url(
+        provider: &Provider,
+        npm: Option<&str>,
+    ) -> Result<String, AppError> {
+        if let Some(explicit) = Self::extract_mimocode_base_url(provider) {
+            return Ok(explicit);
+        }
+
+        let fallback = match npm {
+            Some("@ai-sdk/openai") => Some("https://api.openai.com/v1"),
+            Some("@ai-sdk/anthropic") => Some("https://api.anthropic.com"),
+            Some("@ai-sdk/google") => Some("https://generativelanguage.googleapis.com"),
+            _ => None,
+        };
+
+        fallback.map(|s| s.to_string()).ok_or_else(|| {
+            AppError::localized(
+                "mimocode_base_url_missing",
+                "MimoCode 供应商缺少 options.baseURL，且当前 SDK 包没有默认端点",
+                "MimoCode provider is missing `options.baseURL` and the SDK package has no default endpoint",
+            )
+        })
+    }
+
+    fn extract_mimocode_base_url(provider: &Provider) -> Option<String> {
+        provider
+            .settings_config
+            .get("options")
+            .and_then(|v| v.get("baseURL"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    }
+
+    fn extract_mimocode_npm(provider: &Provider) -> Option<String> {
+        provider
+            .settings_config
+            .get("npm")
+            .and_then(|v| v.as_str())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    }
 }
 
 #[cfg(test)]
@@ -549,6 +600,42 @@ mod tests {
         }));
         let result =
             StreamCheckService::resolve_opencode_base_url(&p, Some("@ai-sdk/openai-compatible"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_resolve_mimocode_base_url_explicit_wins() {
+        let p = make_provider(serde_json::json!({
+            "npm": "@ai-sdk/openai",
+            "options": { "baseURL": "https://proxy.local/v1", "apiKey": "k" },
+            "models": {},
+        }));
+        let resolved =
+            StreamCheckService::resolve_mimocode_base_url(&p, Some("@ai-sdk/openai")).unwrap();
+        assert_eq!(resolved, "https://proxy.local/v1");
+    }
+
+    #[test]
+    fn test_resolve_mimocode_base_url_falls_back_for_known_npm() {
+        let p = make_provider(serde_json::json!({
+            "npm": "@ai-sdk/anthropic",
+            "options": { "apiKey": "k" },
+            "models": {},
+        }));
+        let resolved =
+            StreamCheckService::resolve_mimocode_base_url(&p, Some("@ai-sdk/anthropic")).unwrap();
+        assert_eq!(resolved, "https://api.anthropic.com");
+    }
+
+    #[test]
+    fn test_resolve_mimocode_base_url_errors_for_openai_compatible_without_url() {
+        let p = make_provider(serde_json::json!({
+            "npm": "@ai-sdk/openai-compatible",
+            "options": { "apiKey": "k" },
+            "models": {},
+        }));
+        let result =
+            StreamCheckService::resolve_mimocode_base_url(&p, Some("@ai-sdk/openai-compatible"));
         assert!(result.is_err());
     }
 

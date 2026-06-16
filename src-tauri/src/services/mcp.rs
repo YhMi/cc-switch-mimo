@@ -40,6 +40,9 @@ impl McpService {
         if prev_apps.opencode && !server.apps.opencode {
             Self::remove_server_from_app(state, &server.id, &AppType::OpenCode)?;
         }
+        if prev_apps.mimocode && !server.apps.mimocode {
+            Self::remove_server_from_app(state, &server.id, &AppType::MimoCode)?;
+        }
         if prev_apps.hermes && !server.apps.hermes {
             Self::remove_server_from_app(state, &server.id, &AppType::Hermes)?;
         }
@@ -129,6 +132,13 @@ impl McpService {
                     &server.server,
                 )?;
             }
+            AppType::MimoCode => {
+                mcp::sync_single_server_to_mimocode(
+                    &Default::default(),
+                    &server.id,
+                    &server.server,
+                )?;
+            }
             AppType::OpenClaw => {
                 // OpenClaw MCP support is still in development (Issue #4834)
                 // Skip for now
@@ -164,6 +174,9 @@ impl McpService {
             AppType::Gemini => mcp::remove_server_from_gemini(id)?,
             AppType::OpenCode => {
                 mcp::remove_server_from_opencode(id)?;
+            }
+            AppType::MimoCode => {
+                mcp::remove_server_from_mimocode(id)?;
             }
             AppType::OpenClaw => {
                 // OpenClaw MCP support is still in development
@@ -378,6 +391,44 @@ impl McpService {
                     let to_save = if let Some(existing_server) = existing.get(&server.id) {
                         let mut merged = existing_server.clone();
                         merged.apps.opencode = true;
+                        merged
+                    } else {
+                        // 真正的新服务器
+                        new_count += 1;
+                        server.clone()
+                    };
+
+                    state.db.save_mcp_server(&to_save)?;
+                    existing.insert(to_save.id.clone(), to_save.clone());
+
+                    // 导入是读取已有配置，不应反向写回任何应用的 live 配置。
+                    // 显式编辑、启用/禁用或手动同步时再执行写回。
+                }
+            }
+        }
+
+        Ok(new_count)
+    }
+
+    /// 从 MimoCode 导入 MCP（v3.9.2+ 新增）
+    pub fn import_from_mimocode(state: &AppState) -> Result<usize, AppError> {
+        // 创建临时 MultiAppConfig 用于导入
+        let mut temp_config = crate::app_config::MultiAppConfig::default();
+
+        // 调用原有的导入逻辑（从 mcp/mimocode.rs）
+        let count = crate::mcp::import_from_mimocode(&mut temp_config)?;
+
+        let mut new_count = 0;
+
+        // 如果有导入的服务器，保存到数据库
+        if count > 0 {
+            if let Some(servers) = &temp_config.mcp.servers {
+                let mut existing = state.db.get_all_mcp_servers()?;
+                for server in servers.values() {
+                    // 已存在：仅启用 MimoCode，不覆盖其他字段（与导入模块语义保持一致）
+                    let to_save = if let Some(existing_server) = existing.get(&server.id) {
+                        let mut merged = existing_server.clone();
+                        merged.apps.mimocode = true;
                         merged
                     } else {
                         // 真正的新服务器

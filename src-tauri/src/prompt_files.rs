@@ -7,6 +7,7 @@ use crate::error::AppError;
 use crate::gemini_config::get_gemini_dir;
 use crate::openclaw_config::get_openclaw_dir;
 use crate::opencode_config::get_opencode_dir;
+use crate::mimocode_config::get_mimocode_dir;
 
 /// 返回指定应用所使用的提示词文件路径。
 pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
@@ -23,6 +24,7 @@ pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
         AppType::Codex => get_base_dir_with_fallback(get_codex_auth_path(), ".codex")?,
         AppType::Gemini => get_gemini_dir(),
         AppType::OpenCode => get_opencode_dir(),
+        AppType::MimoCode => get_mimocode_dir(),
         AppType::OpenClaw => get_openclaw_dir(),
         AppType::Hermes => crate::hermes_config::get_hermes_dir(),
         AppType::ClaudeDesktop => unreachable!("handled above"),
@@ -32,7 +34,7 @@ pub fn prompt_file_path(app: &AppType) -> Result<PathBuf, AppError> {
         AppType::Claude => "CLAUDE.md",
         AppType::Codex => "AGENTS.md",
         AppType::Gemini => "GEMINI.md",
-        AppType::OpenCode | AppType::OpenClaw | AppType::Hermes => "AGENTS.md",
+        AppType::OpenCode |AppType::MimoCode | AppType::OpenClaw | AppType::Hermes => "AGENTS.md",
         AppType::ClaudeDesktop => unreachable!("handled above"),
     };
 

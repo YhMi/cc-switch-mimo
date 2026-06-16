@@ -146,6 +146,7 @@ pub(crate) fn build_provider_from_request(
         AppType::Codex => build_codex_settings(request),
         AppType::Gemini => build_gemini_settings(request),
         AppType::OpenCode => build_opencode_settings(request),
+        AppType::MimoCode=> build_mimocode_settings(request),
         AppType::OpenClaw => build_additive_app_settings(request),
         AppType::Hermes => build_hermes_settings(request),
     };
@@ -437,6 +438,33 @@ fn build_opencode_settings(request: &DeepLinkImportRequest) -> serde_json::Value
     })
 }
 
+/// Build MimoCode settings configuration
+fn build_mimocode_settings(request: &DeepLinkImportRequest) -> serde_json::Value {
+    let endpoint = get_primary_endpoint(request);
+
+    // Build options object
+    let mut options = serde_json::Map::new();
+    if !endpoint.is_empty() {
+        options.insert("baseURL".to_string(), json!(endpoint));
+    }
+    if let Some(api_key) = &request.api_key {
+        options.insert("apiKey".to_string(), json!(api_key));
+    }
+
+    // Build models object
+    let mut models = serde_json::Map::new();
+    if let Some(model) = &request.model {
+        models.insert(model.clone(), json!({ "name": model }));
+    }
+
+    // Default to openai-compatible npm package
+    json!({
+        "npm": "@ai-sdk/openai-compatible",
+        "options": options,
+        "models": models
+    })
+}
+
 /// Build settings for OpenClaw (camelCase live config).
 /// Format: { baseUrl, apiKey, api, models }
 fn build_additive_app_settings(request: &DeepLinkImportRequest) -> serde_json::Value {
@@ -567,7 +595,7 @@ pub fn parse_and_merge_config(
         "codex" => merge_codex_config(&mut merged, &config_value)?,
         "gemini" => merge_gemini_config(&mut merged, &config_value)?,
         // Additive mode apps use JSON config directly; pass through as-is
-        "openclaw" | "opencode" | "hermes" => {
+        "openclaw" | "opencode" |"mimocode" | "hermes" => {
             merge_additive_config(&mut merged, &config_value)?;
         }
         "" => {

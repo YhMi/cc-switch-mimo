@@ -21,6 +21,7 @@ mod linux_fix;
 mod mcp;
 mod openclaw_config;
 mod opencode_config;
+mod mimocode_config;
 mod panic_hook;
 mod prompt;
 mod prompt_files;
@@ -644,6 +645,13 @@ pub fn run() {
                 Ok(_) => log::debug!("○ No new OpenCode providers to import"),
                 Err(e) => log::warn!("✗ Failed to import OpenCode providers: {e}"),
             }
+            match crate::services::provider::import_mimocode_providers_from_live(&app_state) {
+                Ok(count) if count > 0 => {
+                    log::info!("✓ Imported {count} MimoCode provider(s) from live config");
+                }
+                Ok(_) => log::debug!("○ No new MimoCode providers to import"),
+                Err(e) => log::warn!("✗ Failed to import MimoCode providers: {e}"),
+            }
             match crate::services::provider::import_openclaw_providers_from_live(&app_state) {
                 Ok(count) if count > 0 => {
                     log::info!("✓ Imported {count} OpenClaw provider(s) from live config");
@@ -746,6 +754,14 @@ pub fn run() {
                     Err(e) => log::warn!("✗ Failed to import OpenCode MCP: {e}"),
                 }
 
+                match crate::services::mcp::McpService::import_from_mimocode(&app_state) {
+                    Ok(count) if count > 0 => {
+                        log::info!("✓ Imported {count} MCP server(s) from MimoCode");
+                    }
+                    Ok(_) => log::debug!("○ No MimoCode MCP servers found to import"),
+                    Err(e) => log::warn!("✗ Failed to import MimoCode MCP: {e}"),
+                }
+
                 match crate::services::mcp::McpService::import_from_hermes(&app_state) {
                     Ok(count) if count > 0 => {
                         log::info!("✓ Imported {count} MCP server(s) from Hermes");
@@ -764,6 +780,7 @@ pub fn run() {
                     crate::app_config::AppType::Codex,
                     crate::app_config::AppType::Gemini,
                     crate::app_config::AppType::OpenCode,
+                    crate::app_config::AppType::MimoCode,
                     crate::app_config::AppType::OpenClaw,
                     crate::app_config::AppType::Hermes,
                 ] {
@@ -1066,6 +1083,10 @@ pub fn run() {
                         "OpenCode usage initial sync",
                         crate::services::session_usage_opencode::sync_opencode_usage(db),
                     );
+                    run_step(
+                        "MimoCode usage initial sync",
+                        crate::services::session_usage_mimocode::sync_mimocode_usage(db),
+                    );
 
                     // 定期同步
                     let mut interval = tokio::time::interval(std::time::Duration::from_secs(
@@ -1089,6 +1110,10 @@ pub fn run() {
                         run_step(
                             "OpenCode usage periodic sync",
                             crate::services::session_usage_opencode::sync_opencode_usage(db),
+                        );
+                        run_step(
+                            "MimoCode usage periodic sync",
+                            crate::services::session_usage_mimocode::sync_mimocode_usage(db),
                         );
                     }
                 });
@@ -1377,6 +1402,8 @@ pub fn run() {
             // OpenCode specific
             commands::import_opencode_providers_from_live,
             commands::get_opencode_live_provider_ids,
+            commands::import_mimocode_providers_from_live,
+            commands::get_mimocode_live_provider_ids,
             // OpenClaw specific
             commands::import_openclaw_providers_from_live,
             commands::get_openclaw_live_provider_ids,

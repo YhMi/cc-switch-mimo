@@ -4,7 +4,7 @@ pub mod terminal;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use providers::{claude, codex, gemini, hermes, openclaw, opencode};
+use providers::{claude, codex, gemini, hermes, openclaw, opencode,mimocode};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,13 +56,14 @@ pub struct DeleteSessionOutcome {
 }
 
 pub fn scan_sessions() -> Vec<SessionMeta> {
-    let (r1, r2, r3, r4, r5, r6) = std::thread::scope(|s| {
+    let (r1, r2, r3, r4, r5, r6,r7) = std::thread::scope(|s| {
         let h1 = s.spawn(codex::scan_sessions);
         let h2 = s.spawn(claude::scan_sessions);
         let h3 = s.spawn(opencode::scan_sessions);
-        let h4 = s.spawn(openclaw::scan_sessions);
-        let h5 = s.spawn(gemini::scan_sessions);
-        let h6 = s.spawn(hermes::scan_sessions);
+        let h4 = s.spawn(mimocode::scan_sessions);
+        let h5 = s.spawn(openclaw::scan_sessions);
+        let h6 = s.spawn(gemini::scan_sessions);
+        let h7 = s.spawn(hermes::scan_sessions);
         (
             h1.join().unwrap_or_default(),
             h2.join().unwrap_or_default(),
@@ -70,6 +71,7 @@ pub fn scan_sessions() -> Vec<SessionMeta> {
             h4.join().unwrap_or_default(),
             h5.join().unwrap_or_default(),
             h6.join().unwrap_or_default(),
+            h7.join().unwrap_or_default(),
         )
     });
 
@@ -95,6 +97,9 @@ pub fn load_messages(provider_id: &str, source_path: &str) -> Result<Vec<Session
     if provider_id == "opencode" && source_path.starts_with("sqlite:") {
         return opencode::load_messages_sqlite(source_path);
     }
+    if provider_id == "mimocode" && source_path.starts_with("sqlite:") {
+        return mimocode::load_messages_sqlite(source_path);
+    }
     if provider_id == "hermes" && source_path.starts_with("sqlite:") {
         return hermes::load_messages_sqlite(source_path);
     }
@@ -104,6 +109,7 @@ pub fn load_messages(provider_id: &str, source_path: &str) -> Result<Vec<Session
         "codex" => codex::load_messages(path),
         "claude" => claude::load_messages(path),
         "opencode" => opencode::load_messages(path),
+        "mimocode" => mimocode::load_messages(path),
         "openclaw" => openclaw::load_messages(path),
         "gemini" => gemini::load_messages(path),
         "hermes" => hermes::load_messages(path),
@@ -119,6 +125,9 @@ pub fn delete_session(
     // SQLite sessions bypass the file-based deletion path
     if provider_id == "opencode" && source_path.starts_with("sqlite:") {
         return opencode::delete_session_sqlite(session_id, source_path);
+    }
+    if provider_id == "mimocode" && source_path.starts_with("sqlite:") {
+        return mimocode::delete_session_sqlite(session_id, source_path);
     }
     if provider_id == "hermes" && source_path.starts_with("sqlite:") {
         return hermes::delete_session_sqlite(session_id, source_path);
@@ -161,6 +170,9 @@ fn delete_session_with_roots(
                 "opencode" => {
                     opencode::delete_session(&validated_root, &validated_source, session_id)
                 }
+                "mimocode" => {
+                    mimocode::delete_session(&validated_root, &validated_source, session_id)
+                }
                 "openclaw" => {
                     openclaw::delete_session(&validated_root, &validated_source, session_id)
                 }
@@ -192,6 +204,7 @@ fn provider_roots(provider_id: &str) -> Result<Vec<PathBuf>, String> {
         "codex" => codex::session_roots(),
         "claude" => vec![crate::config::get_claude_config_dir().join("projects")],
         "opencode" => vec![opencode::get_opencode_data_dir()],
+        "mimocode" => vec![mimocode::get_mimocode_data_dir()],
         "openclaw" => vec![crate::openclaw_config::get_openclaw_dir().join("agents")],
         "gemini" => vec![crate::gemini_config::get_gemini_dir().join("tmp")],
         "hermes" => vec![crate::hermes_config::get_hermes_dir().join("sessions")],
