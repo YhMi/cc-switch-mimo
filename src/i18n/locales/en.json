@@ -772,7 +772,7 @@
     "browsePlaceholderCodex": "e.g., /home/<your-username>/.codex",
     "browsePlaceholderGemini": "e.g., /home/<your-username>/.gemini",
     "browsePlaceholderOpencode": "e.g., /home/<your-username>/.config/opencode",
-    "browsePlaceholderMimocode": "e.g., /home/<your-username>/.config/mimoncode",
+    "browsePlaceholderMimocode": "e.g., /home/<your-username>/.config/mimocode",
     "browsePlaceholderOpenclaw": "e.g., /home/<your-username>/.openclaw",
     "browsePlaceholderHermes": "e.g., /home/<your-username>/.hermes",
     "browseDirectory": "Browse Directory",

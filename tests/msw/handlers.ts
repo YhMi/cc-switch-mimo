@@ -72,6 +72,14 @@ export const handlers = [
     success(getLiveProviderIds("opencode")),
   ),
 
+  http.post(`${TAURI_ENDPOINT}/get_mimocode_live_provider_ids`, () =>
+    success(getLiveProviderIds("mimocode")),
+  ),
+
+  http.post(`${TAURI_ENDPOINT}/import_mimocode_providers_from_live`, () =>
+    success([]),
+  ),
+
   http.post(`${TAURI_ENDPOINT}/get_openclaw_live_provider_ids`, () =>
     success(getLiveProviderIds("openclaw")),
   ),

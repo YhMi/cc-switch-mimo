@@ -113,12 +113,13 @@ const UnifiedSkillsPanel = React.forwardRef<
   }, [skillUpdates]);
 
   const enabledCounts = useMemo(() => {
-    const counts = {
+    const counts: Record<string, number> = {
       claude: 0,
       "claude-desktop": 0,
       codex: 0,
       gemini: 0,
       opencode: 0,
+      mimocode: 0,
       openclaw: 0,
       hermes: 0,
     };
@@ -746,6 +747,7 @@ const ImportSkillsDialog: React.FC<ImportSkillsDialogProps> = ({
           codex: skill.foundIn.includes("codex"),
           gemini: skill.foundIn.includes("gemini"),
           opencode: skill.foundIn.includes("opencode"),
+          mimocode: skill.foundIn.includes("mimocode"),
           openclaw: false,
           hermes: skill.foundIn.includes("hermes"),
         },

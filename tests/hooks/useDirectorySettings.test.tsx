@@ -69,6 +69,7 @@ describe("useDirectorySettings", () => {
       if (app === "codex") return "/remote/codex";
       if (app === "gemini") return "/remote/gemini";
       if (app === "opencode") return "/remote/opencode";
+      if (app === "mimocode") return "/remote/mimocode";
       if (app === "openclaw") return "/remote/openclaw";
       return "/remote/hermes";
     });
@@ -91,6 +92,7 @@ describe("useDirectorySettings", () => {
       codex: "/remote/codex",
       gemini: "/remote/gemini",
       opencode: "/remote/opencode",
+      mimocode: "/remote/mimocode",
       openclaw: "/remote/openclaw",
       hermes: "/remote/hermes",
     });
