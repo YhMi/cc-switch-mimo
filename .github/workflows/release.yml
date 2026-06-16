@@ -95,14 +95,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Prepare Tauri signing key
+        if: runner.os == 'macOS'
         shell: bash
         run: |
-          # 调试：检查 Secret 是否存在
+          # 无密钥直接跳过，不阻断打包流程
           if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
-            echo "❌ TAURI_SIGNING_PRIVATE_KEY Secret 为空或不存在" >&2
-            echo "请检查 GitHub 仓库 Settings > Secrets and variables > Actions" >&2
-            exit 1
+            echo "ℹ️ TAURI_SIGNING_PRIVATE_KEY Secret 未配置，跳过 Updater 签名密钥准备，打包将使用 --no-sign"
+            echo "NO_TAURI_SIGN_KEY=1" >> "$GITHUB_ENV"
+            exit 0
           fi
+          echo "NO_TAURI_SIGN_KEY=0" >> "$GITHUB_ENV"
           
           RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           # 目标：提供正确的私钥“文件路径”给 Tauri CLI，避免内容解码歧义
@@ -151,7 +153,7 @@ jobs:
           echo "✅ Tauri signing key prepared"
 
       - name: Import Apple signing certificate
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && secrets.APPLE_CERTIFICATE != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -204,9 +206,15 @@ jobs:
         run: |
           set -euo pipefail
           max_attempts=3
+          # 无密钥则免签打包
+          SIGN_FLAG=""
+          if [ "${{ env.NO_TAURI_SIGN_KEY }}" = "1" ]; then
+            SIGN_FLAG="--no-sign"
+            echo "ℹ️ 未配置Tauri签名私钥，启用免签打包模式"
+          fi
           for attempt in $(seq 1 "$max_attempts"); do
             echo "=== macOS build/notarization attempt ${attempt}/${max_attempts} ==="
-            if pnpm tauri build --target universal-apple-darwin; then
+            if pnpm tauri build --target universal-apple-darwin $SIGN_FLAG; then
               echo "✅ macOS build/notarization succeeded"
               exit 0
             fi
@@ -259,9 +267,11 @@ jobs:
             exit 1
           fi
 
-          # Staple notarization ticket to .app (Tauri already notarized it)
-          xcrun stapler staple "$APP_PATH"
-          echo "✅ .app stapled"
+          # Staple notarization ticket to .app (仅正式签名环境执行)
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            xcrun stapler staple "$APP_PATH"
+            echo "✅ .app stapled"
+          fi
 
           # 1) Collect .tar.gz (updater artifact)
           NEW_TAR_GZ="CC-Switch-${VERSION}-macOS.tar.gz"
@@ -274,10 +284,10 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "release-assets/$NEW_ZIP"
           echo "macOS zip ready: $NEW_ZIP"
 
-          # 3) Create styled DMG with create-dmg (Tauri's built-in DMG styling doesn't work on CI)
+          # 3) Create styled DMG with create-dmg (仅存在苹果签名证书时构建带签名DMG)
           if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "❌ APPLE_SIGNING_IDENTITY is missing before DMG creation" >&2
-            exit 1
+            echo "ℹ️ 无Apple开发者证书，跳过带签名DMG构建"
+            exit 0
           fi
 
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
@@ -305,7 +315,7 @@ jobs:
           echo "✅ Styled DMG created: $NEW_DMG"
 
       - name: Notarize macOS DMG
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != ''
         shell: bash
         timeout-minutes: 30
         env:
@@ -347,7 +357,7 @@ jobs:
           done
 
       - name: Verify macOS code signing and notarization
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -639,7 +649,7 @@ jobs:
             fi
             if [ -n "$linux_x64_url" ] && [ -n "$linux_x64_sig" ]; then
               [ $first -eq 0 ] && echo ','
-              echo "    \"linux-x86_64\": {\"signature\": \"$linux_x64_sig\", \"url\": \"$linux_x64_url\"}"
+              echo "    \"linux-x86_64\": {\"signature\": \"$linux_x64_sig\", \"url\": \"$linux_x64_sig\"}"
               first=0
             fi
             if [ -n "$linux_arm64_url" ] && [ -n "$linux_arm64_sig" ]; then
