@@ -95,11 +95,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Prepare Tauri signing key
-        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         shell: bash
         run: |
+          # 调试：检查 Secret 是否存在
+          if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
+            echo "❌ TAURI_SIGNING_PRIVATE_KEY Secret 为空或不存在" >&2
+            echo "请检查 GitHub 仓库 Settings > Secrets and variables > Actions" >&2
+            exit 1
+          fi
+          
           RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
-          # 目标：提供正确的私钥"文件路径"给 Tauri CLI，避免内容解码歧义
+          # 目标：提供正确的私钥“文件路径”给 Tauri CLI，避免内容解码歧义
           KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
           # 情况 1：原始两行文本（第一行以 "untrusted comment:" 开头）
           if echo "$RAW" | head -n1 | grep -q '^untrusted comment:'; then
@@ -124,7 +130,7 @@ jobs:
               fi
             fi
           fi
-          # 将"完整两行内容"作为环境变量注入（Tauri 支持传入完整私钥文本或文件路径）
+          # 将“完整两行内容”作为环境变量注入（Tauri 支持传入完整私钥文本或文件路径）
           # 使用多行写入语法，保持换行以便解析
           # 将完整两行私钥内容进行 base64 编码，作为单行内容注入环境变量
           if command -v base64 >/dev/null 2>&1; then
@@ -144,14 +150,8 @@ jobs:
           fi
           echo "✅ Tauri signing key prepared"
 
-      - name: Skip signing notice
-        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY == '' }}
-        shell: bash
-        run: |
-          echo "⚠️ TAURI_SIGNING_PRIVATE_KEY 未设置 — 跳过签名，Updater .sig 不会生成"
-
       - name: Import Apple signing certificate
-        if: runner.os == 'macOS' && secrets.APPLE_CERTIFICATE != ''
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
@@ -203,27 +203,21 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "⚠️ APPLE_SIGNING_IDENTITY 未设置 — 构建未签名版本"
-            BUILD_ARGS="--no-sign"
-          else
-            BUILD_ARGS=""
-          fi
           max_attempts=3
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "=== macOS build attempt ${attempt}/${max_attempts} ==="
-            if pnpm tauri build --target universal-apple-darwin $BUILD_ARGS; then
-              echo "✅ macOS build succeeded"
+            echo "=== macOS build/notarization attempt ${attempt}/${max_attempts} ==="
+            if pnpm tauri build --target universal-apple-darwin; then
+              echo "✅ macOS build/notarization succeeded"
               exit 0
             fi
 
             if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "❌ macOS build failed after ${max_attempts} attempts" >&2
+              echo "❌ macOS build/notarization failed after ${max_attempts} attempts" >&2
               exit 1
             fi
 
             sleep_seconds=$((attempt * 60))
-            echo "⚠️ macOS build failed, retrying in ${sleep_seconds}s..."
+            echo "⚠️ macOS build/notarization failed, retrying in ${sleep_seconds}s..."
             sleep "$sleep_seconds"
           done
 
@@ -266,11 +260,8 @@ jobs:
           fi
 
           # Staple notarization ticket to .app (Tauri already notarized it)
-          if xcrun stapler staple "$APP_PATH" 2>/dev/null; then
-            echo "✅ .app stapled"
-          else
-            echo "⚠️ .app 未公证（无签名环境中正常）"
-          fi
+          xcrun stapler staple "$APP_PATH"
+          echo "✅ .app stapled"
 
           # 1) Collect .tar.gz (updater artifact)
           NEW_TAR_GZ="CC-Switch-${VERSION}-macOS.tar.gz"
@@ -284,6 +275,11 @@ jobs:
           echo "macOS zip ready: $NEW_ZIP"
 
           # 3) Create styled DMG with create-dmg (Tauri's built-in DMG styling doesn't work on CI)
+          if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            echo "❌ APPLE_SIGNING_IDENTITY is missing before DMG creation" >&2
+            exit 1
+          fi
+
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
           NEW_DMG="CC-Switch-${VERSION}-macOS.dmg"
           DMG_STAGE_DIR="$RUNNER_TEMP/dmg-stage"
@@ -291,11 +287,6 @@ jobs:
           mkdir -p "$DMG_STAGE_DIR"
           ditto "$APP_PATH" "$DMG_STAGE_DIR/CC Switch.app"
 
-          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            CODESIGN_FLAGS="--codesign $APPLE_SIGNING_IDENTITY --no-internet-enable"
-          else
-            CODESIGN_FLAGS=""
-          fi
           create-dmg \
             --volname "CC Switch" \
             --background "src-tauri/icons/dmg-background.png" \
@@ -305,7 +296,8 @@ jobs:
             --icon "CC Switch.app" 180 220 \
             --hide-extension "CC Switch.app" \
             --app-drop-link 480 220 \
-            $CODESIGN_FLAGS \
+            --codesign "$APPLE_SIGNING_IDENTITY" \
+            --no-internet-enable \
             "release-assets/$NEW_DMG" \
             "$DMG_STAGE_DIR"
 
@@ -313,7 +305,7 @@ jobs:
           echo "✅ Styled DMG created: $NEW_DMG"
 
       - name: Notarize macOS DMG
-        if: runner.os == 'macOS' && secrets.APPLE_CERTIFICATE != ''
+        if: runner.os == 'macOS'
         shell: bash
         timeout-minutes: 30
         env:
@@ -355,7 +347,7 @@ jobs:
           done
 
       - name: Verify macOS code signing and notarization
-        if: runner.os == 'macOS' && secrets.APPLE_CERTIFICATE != ''
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           set -euo pipefail
