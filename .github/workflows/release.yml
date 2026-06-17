@@ -151,78 +151,10 @@ jobs:
           fi
           echo "✅ Tauri signing key prepared"
 
-      - name: Check Apple Sign Secrets Exist
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          MISSING=""
-          [ -z "${{ secrets.APPLE_CERTIFICATE }}" ] && MISSING+="APPLE_CERTIFICATE "
-          [ -z "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" ] && MISSING+="APPLE_CERTIFICATE_PASSWORD "
-          [ -z "${{ secrets.KEYCHAIN_PASSWORD }}" ] && MISSING+="KEYCHAIN_PASSWORD "
-          [ -z "${{ secrets.APPLE_ID }}" ] && MISSING+="APPLE_ID "
-          [ -z "${{ secrets.APPLE_PASSWORD }}" ] && MISSING+="APPLE_PASSWORD "
-          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && MISSING+="APPLE_TEAM_ID "
-
-          if [ -n "$MISSING" ]; then
-            echo "⚠️ 缺失苹果签名相关Secrets: $MISSING"
-            echo "⚠️ 将使用免签模式打包macOS，产物无法公证上架"
-            echo "SKIP_APPLE_SIGN=true" >> "$GITHUB_ENV"
-          else
-            echo "✅ 全部苹果签名Secret已配置，执行正式签名公证流程"
-            echo "SKIP_APPLE_SIGN=false" >> "$GITHUB_ENV"
-          fi
-
-      - name: Import Apple signing certificate
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Decode .p12 certificate from base64
-          CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          printf '%s' "${{ secrets.APPLE_CERTIFICATE }}" | (base64 --decode 2>/dev/null || base64 -D) > "$CERT_PATH"
-
-          # Save original default keychain for cleanup
-          ORIGINAL_DEFAULT_KEYCHAIN=$(security default-keychain -d user | tr -d '"' | xargs)
-          echo "ORIGINAL_DEFAULT_KEYCHAIN=$ORIGINAL_DEFAULT_KEYCHAIN" >> "$GITHUB_ENV"
-
-          # Create temporary keychain
-          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security default-keychain -s "$KEYCHAIN_PATH"
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
-
-          # Import certificate
-          security import "$CERT_PATH" \
-            -k "$KEYCHAIN_PATH" \
-            -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH"
-
-          # Dynamically resolve signing identity (must be "Developer ID Application")
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
-            | grep "Developer ID Application" | grep -oE '"[^"]+"' | head -1 | tr -d '"')
-          if [ -z "$IDENTITY" ]; then
-            echo "❌ No 'Developer ID Application' identity found — listing all identities:" >&2
-            security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-            exit 1
-          fi
-          echo "✅ Signing identity: $IDENTITY"
-          echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-
-          # Cleanup certificate file
-          rm -f "$CERT_PATH"
-
       - name: Build Tauri App (macOS)
         if: runner.os == 'macOS'
         shell: bash
         timeout-minutes: 60
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           # 心跳保活，防止长时间无输出被runner终止
@@ -230,13 +162,8 @@ jobs:
           HEART_PID=$!
 
           max_attempts=3
-          if [ "${{ env.SKIP_APPLE_SIGN }}" = "true" ]; then
-            echo "🔨 免签模式打包macOS"
-            BUILD_ARG="--target universal-apple-darwin --no-sign"
-          else
-            echo "🔨 正式签名+公证打包macOS"
-            BUILD_ARG="--target universal-apple-darwin"
-          fi
+          echo "🔨 免签模式打包macOS，不使用苹果开发者证书"
+          BUILD_ARG="--target universal-apple-darwin --no-sign"
 
           for attempt in $(seq 1 "$max_attempts"); do
             echo "=== macOS build attempt ${attempt}/${max_attempts} ==="
@@ -295,13 +222,8 @@ jobs:
             exit 1
           fi
 
-          # Staple 仅正式签名模式执行
-          if [ "${{ env.SKIP_APPLE_SIGN }}" != "true" ]; then
-            xcrun stapler staple "$APP_PATH"
-            echo "✅ .app stapled"
-          else
-            echo "ℹ️ 免签模式，跳过app stapler"
-          fi
+          # 免签模式，跳过staple公证票
+          echo "ℹ️ 免签模式，跳过app stapler"
 
           # 1) Collect .tar.gz (updater artifact)
           NEW_TAR_GZ="CC-Switch-${VERSION}-macOS.tar.gz"
@@ -331,11 +253,7 @@ jobs:
           mkdir -p "$DMG_STAGE_DIR"
           ditto "$APP_PATH" "$DMG_STAGE_DIR/CC Switch.app"
 
-          DMG_CODESIGN_ARG=""
-          if [ "${{ env.SKIP_APPLE_SIGN }}" != "true" ] && [ -n "${{ env.APPLE_SIGNING_IDENTITY }}" ]; then
-            DMG_CODESIGN_ARG="--codesign ${{ env.APPLE_SIGNING_IDENTITY }}"
-          fi
-
+          # 免签移除--codesign参数
           create-dmg \
             --volname "CC Switch" \
             $BG_IMG_ARG \
@@ -345,106 +263,12 @@ jobs:
             --icon "CC Switch.app" 180 220 \
             --hide-extension "CC Switch.app" \
             --app-drop-link 480 220 \
-            $DMG_CODESIGN_ARG \
             --no-internet-enable \
             "release-assets/$NEW_DMG" \
             "$DMG_STAGE_DIR"
 
           rm -rf "$DMG_STAGE_DIR"
           echo "✅ Styled DMG created: $NEW_DMG"
-
-      - name: Notarize macOS DMG
-        if: runner.os == 'macOS' && env.SKIP_APPLE_SIGN == 'false'
-        shell: bash
-        timeout-minutes: 30
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          # 心跳保活
-          while true; do echo "⏳ DMG notarize heartbeat $(date)"; sleep 30; done &
-          HEART_PID=$!
-
-          DMG_PATH=$(find release-assets -maxdepth 1 -name "*.dmg" -type f | head -1 || true)
-          if [ -z "$DMG_PATH" ]; then
-            echo "❌ No .dmg found in release-assets/ to notarize" >&2
-            kill $HEART_PID || true
-            exit 1
-          fi
-
-          echo "=== Notarizing DMG: $DMG_PATH ==="
-          max_attempts=3
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "=== DMG notarization attempt ${attempt}/${max_attempts} ==="
-            if xcrun notarytool submit "$DMG_PATH" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait; then
-              echo "✅ DMG notarization succeeded"
-              xcrun stapler staple "$DMG_PATH"
-              echo "✅ DMG stapled"
-              kill $HEART_PID || true
-              break
-            fi
-
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "❌ DMG notarization failed after ${max_attempts} attempts" >&2
-              kill $HEART_PID || true
-              exit 1
-            fi
-
-            sleep_seconds=$((attempt * 60))
-            echo "⚠️ DMG notarization failed, retrying in ${sleep_seconds}s..."
-            sleep "$sleep_seconds"
-          done
-
-      - name: Verify macOS code signing and notarization
-        if: runner.os == 'macOS' && env.SKIP_APPLE_SIGN == 'false'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Verify .app (from Tauri bundle)
-          APP_PATH=""
-          for path in \
-            "src-tauri/target/universal-apple-darwin/release/bundle/macos" \
-            "src-tauri/target/aarch64-apple-darwin/release/bundle/macos" \
-            "src-tauri/target/x86_64-apple-darwin/release/bundle/macos" \
-            "src-tauri/target/release/bundle/macos"; do
-            if [ -d "$path" ]; then
-              [ -z "$APP_PATH" ] && APP_PATH=$(find "$path" -maxdepth 1 -name "*.app" -type d | head -1 || true)
-            fi
-          done
-
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ No .app found for verification" >&2
-            exit 1
-          fi
-          echo "=== Verifying .app: $APP_PATH ==="
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-          echo "✅ codesign verification passed"
-          spctl -a -t exec -vv "$APP_PATH"
-          echo "✅ spctl assessment passed"
-          xcrun stapler validate "$APP_PATH"
-          echo "✅ .app stapler validation passed"
-
-          # Verify .dmg (from release-assets/, created by create-dmg + notarized)
-          DMG_PATH=$(find release-assets -maxdepth 1 -name "*.dmg" -type f | head -1 || true)
-          if [ -n "$DMG_PATH" ]; then
-            echo "=== Verifying .dmg: $DMG_PATH ==="
-            codesign --verify --verbose=2 "$DMG_PATH"
-            echo "✅ .dmg codesign verification passed"
-            spctl -a -t open --context context:primary-signature -vv "$DMG_PATH"
-            echo "✅ .dmg spctl assessment passed"
-            xcrun stapler validate "$DMG_PATH"
-            echo "✅ .dmg stapler validation passed"
-          else
-            echo "❌ No .dmg found for verification — release would ship without verified DMG" >&2
-            exit 1
-          fi
 
       - name: Prepare Windows Assets
         if: runner.os == 'Windows'
@@ -558,17 +382,6 @@ jobs:
           echo "Listing bundles in src-tauri/target..."
           find src-tauri/target -maxdepth 4 -type f -name "*.*" 2>/dev/null || true
 
-      - name: Clean up Apple signing keychain
-        if: runner.os == 'macOS' && always()
-        shell: bash
-        run: |
-          if [ -n "${ORIGINAL_DEFAULT_KEYCHAIN:-}" ]; then
-            security default-keychain -s "$ORIGINAL_DEFAULT_KEYCHAIN" || true
-          fi
-          if [ -f "$RUNNER_TEMP/build.keychain-db" ]; then
-            security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
-          fi
-
   publish-release:
     name: Publish GitHub Release
     runs-on: ubuntu-22.04
@@ -604,7 +417,7 @@ jobs:
 
             ### 下载
 
-            - **macOS**: `CC-Switch-${{ github.ref_name }}-macOS.dmg`（推荐）或 `CC-Switch-${{ github.ref_name }}-macOS.zip`（解压即用）
+            - **macOS**: `CC-Switch-${{ github.ref_name }}-macOS.dmg`（未签名，右键打开一次即可）或 `CC-Switch-${{ github.ref_name }}-macOS.zip`（解压即用）
             - **Windows**: `CC-Switch-${{ github.ref_name }}-Windows.msi`（安装版）或 `CC-Switch-${{ github.ref_name }}-Windows-Portable.zip`（绿色版）
             - **Linux (x86_64)**: `CC-Switch-${{ github.ref_name }}-Linux-x86_64.AppImage` / `.deb` / `.rpm`
             - **Linux (ARM64)**: `CC-Switch-${{ github.ref_name }}-Linux-arm64.AppImage` / `.deb` / `.rpm`
@@ -612,7 +425,7 @@ jobs:
             > `.tar.gz` 为 Tauri updater 自动更新专用，无需手动下载。
 
             ---
-            macOS 版本已通过 Apple 代码签名和公证，可直接安装使用。
+            macOS 版本未经过Apple公证，首次打开请右键 -> 打开绕过安全拦截。
           files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
