@@ -152,9 +152,11 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          set -euo pipefail
+          # 关闭 errexit — 此步骤所有错误手动处理
+          set +e
+          set -u +e
 
-          # 检查所有必需的 secrets — 缺少任意一个则跳过
+          # 检查所有必需的 secrets — 缺少任意一个则直接跳过
           if [ -z "${{ secrets.APPLE_CERTIFICATE }}" ] || [ -z "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" ] || [ -z "${{ secrets.KEYCHAIN_PASSWORD }}" ]; then
             echo "⚠️ Apple 签名 secrets 未完整配置 — 跳过 macOS 签名/公证"
             exit 0
@@ -162,50 +164,51 @@ jobs:
 
           # Decode .p12 certificate from base64
           CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          if ! printf '%s' "${{ secrets.APPLE_CERTIFICATE }}" | (base64 --decode 2>/dev/null || base64 -D) > "$CERT_PATH" 2>/dev/null; then
-            echo "⚠️ APPLE_CERTIFICATE base64 解码失败 — 跳过签名"
-            exit 0
-          fi
+          printf '%s' "${{ secrets.APPLE_CERTIFICATE }}" > "$RUNNER_TEMP/cert.b64"
+          (base64 --decode 2>/dev/null || base64 -D 2>/dev/null) < "$RUNNER_TEMP/cert.b64" > "$CERT_PATH"
+          rm -f "$RUNNER_TEMP/cert.b64"
+
           if [ ! -s "$CERT_PATH" ]; then
-            echo "⚠️ APPLE_CERTIFICATE 解码后为空 — 跳过签名"
+            echo "⚠️ APPLE_CERTIFICATE 解码失败或为空 — 跳过签名"
             exit 0
           fi
 
-          # Save original default keychain for cleanup
-          ORIGINAL_DEFAULT_KEYCHAIN=$(security default-keychain -d user 2>/dev/null | tr -d '"' | xargs || echo "")
-          if [ -n "$ORIGINAL_DEFAULT_KEYCHAIN" ]; then
-            echo "ORIGINAL_DEFAULT_KEYCHAIN=$ORIGINAL_DEFAULT_KEYCHAIN" >> "$GITHUB_ENV" || true
+          # 用 openssl 验证 p12 文件是否有效
+          if ! openssl pkcs12 -in "$CERT_PATH" -passin pass:"${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" -noout 2>/dev/null; then
+            echo "⚠️ 证书 .p12 文件无法验证 — 跳过签名（密码错误或文件损坏）"
+            rm -f "$CERT_PATH"
+            exit 0
           fi
 
-          # Create temporary keychain
+          # Create temporary keychain and import (全部静默)
           KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" 2>/dev/null || true
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH" 2>/dev/null || true
-          security default-keychain -s "$KEYCHAIN_PATH" 2>/dev/null || true
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" 2>/dev/null || true
+          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" >/dev/null 2>&1
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH" >/dev/null 2>&1
+          security default-keychain -s "$KEYCHAIN_PATH" >/dev/null 2>&1
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" >/dev/null 2>&1
 
-          # Import certificate (suppress stderr — macOS security errors are noisy)
-          if security import "$CERT_PATH" \
+          security import "$CERT_PATH" \
             -k "$KEYCHAIN_PATH" \
             -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" \
             -T /usr/bin/codesign \
-            -T /usr/bin/security 2>/dev/null; then
-            # 证书导入成功 — 设置分区列表并解析 identity
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" 2>/dev/null || true
-            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null \
-              | grep "Developer ID Application" | grep -oE '"[^"]+"' | head -1 | tr -d '"' || true)
-            if [ -n "$IDENTITY" ]; then
-              echo "✅ Signing identity: $IDENTITY"
-              echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-            else
-              echo "⚠️ 证书已导入但未找到 'Developer ID Application' — 跳过签名"
-            fi
+            -T /usr/bin/security >/dev/null 2>&1
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" "$KEYCHAIN_PATH" >/dev/null 2>&1
+
+          # 检查 identity
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" 2>/dev/null \
+            | grep "Developer ID Application" | grep -oE '"[^"]+"' | head -1 | tr -d '"')
+
+          if [ -n "$IDENTITY" ]; then
+            echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+            echo "✅ Apple signing identity: $IDENTITY"
           else
-            echo "⚠️ 证书导入失败 — 跳过签名"
+            echo "⚠️ 证书导入后未找到 'Developer ID Application' — 跳过签名"
           fi
 
-          # Cleanup certificate file
+          # Cleanup
           rm -f "$CERT_PATH"
+          exit 0
 
       - name: Build Tauri App (macOS)
         if: runner.os == 'macOS'
