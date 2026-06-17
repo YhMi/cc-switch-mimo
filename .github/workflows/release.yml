@@ -240,7 +240,7 @@ jobs:
           # 校验背景图是否存在
           BG_IMG="src-tauri/icons/dmg-background.png"
           if [ ! -f "$BG_IMG" ]; then
-            echo "⚠️ DMG背景图 $BG_IMG 缺失，使用默认空白背景"
+            echo "⚠️ DMG背景图 $BG_IMG 缺失，使用默认空白背景1"
             unset BG_IMG_ARG
           else
             BG_IMG_ARG="--background $BG_IMG"
