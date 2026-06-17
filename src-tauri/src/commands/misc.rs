@@ -514,7 +514,8 @@ fn official_update_args(tool: &str) -> Option<&'static str> {
 }
 
 fn bare_official_update_command(tool: &str) -> Option<String> {
-    official_update_args(tool).map(|args| format!("{tool} {args}"))
+    let exe_name = cli_executable_name(tool);
+    official_update_args(tool).map(|args| format!("{exe_name} {args}"))
 }
 
 fn chain_update_commands(
@@ -1012,6 +1013,7 @@ enum ShellProbe {
 fn try_get_version(tool: &str) -> ShellProbe {
     use std::process::Command;
 
+    let exe_name = cli_executable_name(tool);
     let output = {
         let shell = std::env::var("SHELL")
             .ok()
@@ -1020,7 +1022,7 @@ fn try_get_version(tool: &str) -> ShellProbe {
         let flag = default_flag_for_shell(&shell);
         Command::new(shell)
             .arg(flag)
-            .arg(format!("{tool} --version"))
+            .arg(format!("{exe_name} --version"))
             .output()
     };
 
@@ -1207,6 +1209,7 @@ fn try_get_version_wsl(
     }
 
     // 构建 Shell 脚本检测逻辑
+    let exe_name = cli_executable_name(tool);
     let (shell, flag, cmd) = if let Some(shell) = force_shell {
         // Defensive validation: never allow an arbitrary executable name here.
         if !is_valid_shell(shell) {
@@ -1222,17 +1225,17 @@ fn try_get_version_wsl(
             default_flag_for_shell(shell)
         };
 
-        (shell.to_string(), flag, format!("{tool} --version"))
+        (shell.to_string(), flag, format!("{exe_name} --version"))
     } else {
         let cmd = if let Some(flag) = force_shell_flag {
             if !is_valid_shell_flag(flag) {
                 return ShellProbe::NotFound(format!("[WSL:{distro}] invalid shell flag: {flag}"));
             }
-            format!("\"${{SHELL:-sh}}\" {flag} '{tool} --version'")
+            format!("\"${{SHELL:-sh}}\" {flag} '{exe_name} --version'")
         } else {
             // 兜底：自动尝试 -lic, -lc, -c
             format!(
-                "\"${{SHELL:-sh}}\" -lic '{tool} --version' 2>/dev/null || \"${{SHELL:-sh}}\" -lc '{tool} --version' 2>/dev/null || \"${{SHELL:-sh}}\" -c '{tool} --version'"
+                "\"${{SHELL:-sh}}\" -lic '{exe_name} --version' 2>/dev/null || \"${{SHELL:-sh}}\" -lc '{exe_name} --version' 2>/dev/null || \"${{SHELL:-sh}}\" -c '{exe_name} --version'"
             )
         };
 
@@ -1484,19 +1487,30 @@ fn mimocode_extra_search_paths(
     paths
 }
 
+/// Maps app identifier to CLI executable name.
+/// Most tools use the same name for both, but mimocode's npm package
+/// installs `mimo`, not `mimocode`.
+fn cli_executable_name(tool: &str) -> &str {
+    match tool {
+        "mimocode" => "mimo",
+        _ => tool,
+    }
+}
+
 fn tool_executable_candidates(tool: &str, dir: &Path) -> Vec<std::path::PathBuf> {
+    let exe_name = cli_executable_name(tool);
     #[cfg(target_os = "windows")]
     {
         vec![
-            dir.join(format!("{tool}.cmd")),
-            dir.join(format!("{tool}.exe")),
-            dir.join(tool),
+            dir.join(format!("{exe_name}.cmd")),
+            dir.join(format!("{exe_name}.exe")),
+            dir.join(exe_name),
         ]
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        vec![dir.join(tool)]
+        vec![dir.join(exe_name)]
     }
 }
 
@@ -1839,6 +1853,7 @@ fn first_abs_path_line(raw: &str) -> Option<&str> {
 #[cfg(not(target_os = "windows"))]
 fn resolve_path_default(tool: &str) -> Option<std::path::PathBuf> {
     use std::process::Command;
+    let exe_name = cli_executable_name(tool);
     let shell = std::env::var("SHELL")
         .ok()
         .filter(|s| is_valid_shell(s))
@@ -1846,7 +1861,7 @@ fn resolve_path_default(tool: &str) -> Option<std::path::PathBuf> {
     let flag = default_flag_for_shell(&shell);
     let out = Command::new(shell)
         .arg(flag)
-        .arg(format!("command -v {tool}"))
+        .arg(format!("command -v {exe_name}"))
         .output()
         .ok()?;
     if !out.status.success() {
@@ -1863,8 +1878,9 @@ fn resolve_path_default(tool: &str) -> Option<std::path::PathBuf> {
 fn resolve_path_default(tool: &str) -> Option<std::path::PathBuf> {
     use std::os::windows::process::CommandExt;
     use std::process::Command;
+    let exe_name = cli_executable_name(tool);
     let out = Command::new("cmd")
-        .args(["/C", &format!("where {tool}")])
+        .args(["/C", &format!("where {exe_name}")])
         .creation_flags(CREATE_NO_WINDOW)
         .output()
         .ok()?;
