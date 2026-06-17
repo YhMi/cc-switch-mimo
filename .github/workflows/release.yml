@@ -78,8 +78,8 @@ jobs:
         shell: bash
         run: |
           if [ -z "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" ]; then
-            echo "❌ TAURI_SIGNING_PRIVATE_KEY Secret 缺失" >&2
-            exit 1
+            echo "⚠️ TAURI_SIGNING_PRIVATE_KEY 未设置 — 跳过更新包签名"
+            exit 0
           fi
           RAW="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           KEY_PATH="$RUNNER_TEMP/tauri_signing.key"
@@ -108,36 +108,36 @@ jobs:
             echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" >> $GITHUB_ENV
           fi
 
-      - name: Build Tauri App (macOS 免签打包，修复参数报错)
+      - name: Build Tauri App (macOS)
         if: runner.os == 'macOS'
         shell: bash
         timeout-minutes: 60
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          # 心跳保活，防止长时间无输出被runner终止
-          while true; do echo "⏳ macOS 打包心跳 $(date)"; sleep 30; done &
-          HEART_PID=$!
-
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            BUILD_ARGS=""
+          else
+            echo "⚠️ APPLE_SIGNING_IDENTITY 未设置 — 构建未签名版本"
+            BUILD_ARGS="--no-sign"
+          fi
           max_attempts=3
-          echo "🔨 免签模式打包macOS，跳过staple公证，不使用苹果开发者证书"
-
           for attempt in $(seq 1 "$max_attempts"); do
-            echo "=== macOS 打包尝试 ${attempt}/${max_attempts} ==="
-            # 关键修复：-- 分隔pnpm脚本参数与tauri底层参数，使用官方兼容参数 --skip-stapling
-            if pnpm run tauri build --target universal-apple-darwin -- --skip-stapling; then
-              echo "✅ macOS 打包完成（免签模式）"
-              kill $HEART_PID || true
+            echo "=== macOS build attempt ${attempt}/${max_attempts} ==="
+            if pnpm tauri build --target universal-apple-darwin $BUILD_ARGS; then
+              echo "✅ macOS build succeeded"
               exit 0
             fi
-
             if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "❌ macOS 打包失败" >&2
-              kill $HEART_PID || true
+              echo "❌ macOS build failed after ${max_attempts} attempts" >&2
               exit 1
             fi
-
             sleep_seconds=$((attempt * 60))
-            echo "⚠️ macOS 打包失败，${sleep_seconds}秒后重试..."
+            echo "⚠️ macOS build failed, retrying in ${sleep_seconds}s..."
             sleep "$sleep_seconds"
           done
 
@@ -152,6 +152,10 @@ jobs:
       - name: Prepare macOS Assets
         if: runner.os == 'macOS'
         shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euxo pipefail
           mkdir -p release-assets
@@ -164,9 +168,6 @@ jobs:
           [ -z "$TAR_GZ" ] && echo "❌ 未找到macOS更新包tar.gz" >&2 && exit 1
           [ -z "$APP_PATH" ] && echo "❌ 未找到.app程序" >&2 && exit 1
 
-          # 免签打包，跳过 stapler 公证装订
-          # 无需执行 xcrun stapler staple
-
           # 1) 复制自动更新tar包
           NEW_TAR_GZ="CC-Switch-${VERSION}-macOS.tar.gz"
           cp "$TAR_GZ" release-assets/$NEW_TAR_GZ
@@ -178,7 +179,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" release-assets/$NEW_ZIP
           echo "macOS zip archive ready: $NEW_ZIP"
 
-          # 3) 构建无签名DMG，移除--codesign参数
+          # 3) 构建DMG，有条件签名
           BG_IMG="src-tauri/icons/dmg-background.png"
           if [ -f "$BG_IMG" ]; then BG_ARG="--background $BG_IMG"; else unset BG_ARG; fi
           HOMEBREW_NO_AUTO_UPDATE=1 brew install create-dmg
@@ -187,16 +188,42 @@ jobs:
           rm -rf $DMG_STAGE && mkdir -p $DMG_STAGE
           ditto "$APP_PATH" "$DMG_STAGE/CC Switch.app"
 
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            CODESIGN_FLAGS="--codesign $APPLE_SIGNING_IDENTITY --no-internet-enable"
+          else
+            CODESIGN_FLAGS="--no-internet-enable"
+          fi
+
           create-dmg \
             --volname "CC Switch" $BG_ARG \
             --window-size 660 400 --window-pos 200 120 \
             --icon-size 80 --icon "CC Switch.app" 180 220 \
             --hide-extension "CC Switch.app" \
             --app-drop-link 480 220 \
-            --no-internet-enable \
+            $CODESIGN_FLAGS \
             release-assets/$NEW_DMG $DMG_STAGE
           rm -rf $DMG_STAGE
-          echo "✅ Un-signed DMG created: $NEW_DMG"
+          echo "✅ DMG created: $NEW_DMG"
+
+          # 4) 公证DMG（仅当签名和Apple凭证均可用时）
+          if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && \
+             [ -n "${APPLE_ID:-}" ] && \
+             [ -n "${APPLE_PASSWORD:-}" ] && \
+             [ -n "${APPLE_TEAM_ID:-}" ]; then
+            echo "=== Notarizing DMG ==="
+            if xcrun notarytool submit "release-assets/$NEW_DMG" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait 2>/dev/null; then
+              echo "✅ DMG notarization succeeded"
+              xcrun stapler staple "release-assets/$NEW_DMG" 2>/dev/null || true
+            else
+              echo "⚠️ DMG notarization failed — continuing unsigned"
+            fi
+          else
+            echo "⚠️ 跳过公证（无签名或Apple凭证）"
+          fi
 
       - name: Prepare Windows Assets
         if: runner.os == 'Windows'
