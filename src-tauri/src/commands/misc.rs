@@ -3935,7 +3935,7 @@ mod tests {
         #[test]
         fn mimocode_windows_static_fallback_skips_official_upgrade() {
             let cmd = static_fallback_command("mimo");
-            assert_eq!(cmd, "npm i -g@mimo-ai/cli@latest");
+            assert_eq!(cmd, "npm i -g @mimo-ai/cli@latest");
             assert!(!cmd.contains("mimo upgrade"));
         }
 
@@ -4270,7 +4270,7 @@ mod tests {
             assert!(!opencode.contains("| bash"));
 
             let mimocode =
-                wsl_tool_action_shell_command("mimocode", ToolLifecycleAction::Install).unwrap();
+                wsl_tool_action_shell_command("mimo", ToolLifecycleAction::Install).unwrap();
             assert!(
                 mimocode.starts_with(
                     "bash -c 'tmp=$(mktemp) && curl -fsSL https://mimo.xiaomi.com/install "
