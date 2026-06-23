@@ -588,12 +588,12 @@ export const mimocodeProviderPresets: MimoCodeProviderPreset[] = [
     },
   },
   {
-    name: "Kimi K2.7 Code",
+    name: "Kimi",
     websiteUrl: "https://platform.moonshot.cn/console?aff=cc-switch",
     apiKeyUrl: "https://platform.moonshot.cn/console/api-keys?aff=cc-switch",
     settingsConfig: {
       npm: "@ai-sdk/openai-compatible",
-      name: "Kimi K2.7 Code",
+      name: "Kimi",
       options: {
         baseURL: "https://api.moonshot.cn/v1",
         apiKey: "",
@@ -1651,14 +1651,14 @@ export const mimocodeProviderPresets: MimoCodeProviderPreset[] = [
     },
   },
   {
-    name: "CTok.ai",
-    websiteUrl: "https://ctok.ai",
-    apiKeyUrl: "https://ctok.ai",
+    name: "ETok.ai",
+    websiteUrl: "https://etok.ai",
+    apiKeyUrl: "https://etok.ai",
     settingsConfig: {
       npm: "@ai-sdk/anthropic",
-      name: "CTok",
+      name: "ETok",
       options: {
-        baseURL: "https://api.ctok.ai/v1",
+        baseURL: "https://api.etok.ai/v1",
         apiKey: "",
         setCacheKey: true,
       },
@@ -1669,8 +1669,8 @@ export const mimocodeProviderPresets: MimoCodeProviderPreset[] = [
     },
     category: "third_party",
     isPartner: true,
-    partnerPromotionKey: "ctok",
-    icon: "ctok",
+    partnerPromotionKey: "etok",
+    icon: "etok",
     iconColor: "#000000",
     templateValues: {
       apiKey: {
