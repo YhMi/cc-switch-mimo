@@ -6,6 +6,8 @@ import { codexProviderPresets } from "@/config/codexProviderPresets";
 import { geminiProviderPresets } from "@/config/geminiProviderPresets";
 import { opencodeProviderPresets } from "@/config/opencodeProviderPresets";
 import { mimocodeProviderPresets } from "@/config/mimocodeProviderPresets";
+import { openclawProviderPresets } from "@/config/openclawProviderPresets";
+import { hermesProviderPresets } from "@/config/hermesProviderPresets";
 
 interface UseProviderCategoryProps {
   appId: AppId;
@@ -45,7 +47,7 @@ export function useProviderCategory({
 
     // 从预设 ID 提取索引
     const match = selectedPresetId.match(
-      /^(claude|codex|gemini|opencode|mimocode)-(\d+)$/,
+      /^(claude|codex|gemini|opencode|mimocode|openclaw|hermes)-(\d+)$/,
     );
     if (!match) return;
 
@@ -78,6 +80,13 @@ export function useProviderCategory({
       }
     } else if (type === "mimocode" && appId === "mimocode") {
       const preset = mimocodeProviderPresets[index];
+    } else if (type === "openclaw" && appId === "openclaw") {
+      const preset = openclawProviderPresets[index];
+      if (preset) {
+        setCategory(preset.category || undefined);
+      }
+    } else if (type === "hermes" && appId === "hermes") {
+      const preset = hermesProviderPresets[index];
       if (preset) {
         setCategory(preset.category || undefined);
       }
