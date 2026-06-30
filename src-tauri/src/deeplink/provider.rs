@@ -800,7 +800,7 @@ fn merge_gemini_config(
     Ok(())
 }
 
-/// Merge configuration for additive mode apps (OpenClaw, OpenCode)
+/// Merge configuration for additive mode apps (OpenClaw, OpenCode, Mimocode)
 ///
 /// These apps use JSON config directly, so we only extract common fields
 /// (api_key, endpoint, model) from the config if not already set in URL params.

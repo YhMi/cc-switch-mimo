@@ -2689,6 +2689,7 @@ function ProviderFormFull({
                 rows={14}
                 showValidation={false}
                 language="json"
+                darkMode={isDarkMode}
               />
             </div>
           ) : appId === "mimocode" &&
@@ -2713,6 +2714,7 @@ function ProviderFormFull({
                   rows={14}
                   showValidation={true}
                   language="json"
+                  darkMode={isDarkMode}
                 />
               </div>
               {settingsConfigErrorField}
