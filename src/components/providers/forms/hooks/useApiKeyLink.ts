@@ -15,7 +15,7 @@ type PresetEntry = {
     | CodexProviderPreset
     | GeminiProviderPreset
     | OpenCodeProviderPreset
-    | MimoCodeProviderPreset;
+    | MimoCodeProviderPreset
     | ClaudeDesktopProviderPreset;
 };
 
@@ -88,7 +88,7 @@ export function useApiKeyLink({
       appId === "codex" ||
       appId === "gemini" ||
       appId === "opencode" ||
-      appId === "mimocode"
+      appId === "mimocode" ||
       appId === "openclaw" ||
       appId === "hermes"
         ? shouldShowApiKeyLink
