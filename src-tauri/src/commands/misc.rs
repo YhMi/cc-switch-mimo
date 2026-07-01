@@ -1501,15 +1501,10 @@ fn tool_executable_candidates(tool: &str, dir: &Path) -> Vec<std::path::PathBuf>
     let exe_name = cli_executable_name(tool);
     #[cfg(target_os = "windows")]
     {
-        vec![
-            dir.join(format!("{exe_name}.cmd")),
-            dir.join(format!("{exe_name}.exe")),
-            dir.join(exe_name),
-        ]
         let extensionless = dir.join(tool);
         let mut candidates = vec![
-            dir.join(format!("{tool}.cmd")),
-            dir.join(format!("{tool}.exe")),
+            dir.join(format!("{exe_name}.cmd")),
+            dir.join(format!("{exe_name}.exe")),
         ];
         if windows_runnable_sibling_for_extensionless_tool(&extensionless).is_none() {
             candidates.push(extensionless);
