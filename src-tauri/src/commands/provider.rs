@@ -901,9 +901,7 @@ mod import_claude_desktop_tests {
             None,
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("sonnet route present");
+        let r = routes.get("claude-sonnet-5").expect("sonnet route present");
         assert_eq!(r.model, "claude-sonnet-4-5-20250929");
         assert!(
             !r.model.to_ascii_lowercase().contains("[1m]"),
@@ -922,9 +920,7 @@ mod import_claude_desktop_tests {
             None,
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("sonnet route present");
+        let r = routes.get("claude-sonnet-5").expect("sonnet route present");
         assert_eq!(r.model, "kimi-k2");
         assert_eq!(r.label_override.as_deref(), Some("kimi-k2"));
         // 默认 provider_type 缺省 → supports_1m_default = true
@@ -941,9 +937,7 @@ mod import_claude_desktop_tests {
             None,
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("sonnet route present");
+        let r = routes.get("claude-sonnet-5").expect("sonnet route present");
         assert_eq!(r.model, "kimi-k2");
         assert_eq!(r.label_override.as_deref(), Some("Kimi K2"));
     }
@@ -958,9 +952,7 @@ mod import_claude_desktop_tests {
             Some("github_copilot"),
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("sonnet route present");
+        let r = routes.get("claude-sonnet-5").expect("sonnet route present");
         assert_eq!(r.model, "gpt-5-codex");
         assert_eq!(r.label_override.as_deref(), Some("gpt-5-codex"));
         assert_eq!(r.supports_1m, Some(true));
@@ -975,9 +967,7 @@ mod import_claude_desktop_tests {
             Some("github_copilot"),
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("sonnet route present");
+        let r = routes.get("claude-sonnet-5").expect("sonnet route present");
         assert_eq!(r.model, "gpt-5-codex");
         assert_eq!(r.label_override.as_deref(), Some("gpt-5-codex"));
         assert_eq!(r.supports_1m, Some(false));
@@ -995,9 +985,7 @@ mod import_claude_desktop_tests {
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
         assert_eq!(routes.len(), 1, "three aliases → one merged route");
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("merged route present");
+        let r = routes.get("claude-sonnet-5").expect("merged route present");
         assert_eq!(r.model, "MiniMax-M2");
         assert_eq!(r.label_override.as_deref(), Some("MiniMax-M2"));
     }
@@ -1015,9 +1003,7 @@ mod import_claude_desktop_tests {
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
         assert_eq!(routes.len(), 1);
-        let r = routes
-            .get("claude-sonnet-4-6")
-            .expect("merged route present");
+        let r = routes.get("claude-sonnet-5").expect("merged route present");
         assert_eq!(r.supports_1m, Some(true));
     }
 
@@ -1033,12 +1019,12 @@ mod import_claude_desktop_tests {
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
         assert_eq!(routes.len(), 3);
-        assert_eq!(routes.get("claude-sonnet-4-6").unwrap().model, "GLM-4.6");
+        assert_eq!(routes.get("claude-sonnet-5").unwrap().model, "GLM-4.6");
         assert_eq!(routes.get("claude-opus-4-8").unwrap().model, "GLM-4-Air");
         assert_eq!(routes.get("claude-haiku-4-5").unwrap().model, "GLM-4-Flash");
         assert_eq!(
             routes
-                .get("claude-sonnet-4-6")
+                .get("claude-sonnet-5")
                 .unwrap()
                 .label_override
                 .as_deref(),
@@ -1058,7 +1044,7 @@ mod import_claude_desktop_tests {
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
         assert_eq!(routes.len(), 1);
         let r = routes
-            .get("claude-sonnet-4-6")
+            .get("claude-sonnet-5")
             .expect("fallback route present");
         assert_eq!(r.model, "kimi-k2");
         assert_eq!(r.label_override.as_deref(), Some("kimi-k2"));
@@ -1073,13 +1059,10 @@ mod import_claude_desktop_tests {
             None,
         );
         let routes = suggested_claude_desktop_routes(&p).expect("routes built");
-        assert!(routes.contains_key("claude-sonnet-4-6"));
+        assert!(routes.contains_key("claude-sonnet-5"));
         assert!(!routes.contains_key("claude-claude-sonnet-4-5-20250929"));
         assert_eq!(
-            routes
-                .get("claude-sonnet-4-6")
-                .expect("route")
-                .label_override,
+            routes.get("claude-sonnet-5").expect("route").label_override,
             None
         );
     }
