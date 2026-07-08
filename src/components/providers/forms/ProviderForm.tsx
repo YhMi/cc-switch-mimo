@@ -507,6 +507,7 @@ function ProviderFormFull({
     defaultOpusModelName,
     defaultFableModel,
     defaultFableModelName,
+    subagentModel,
     handleModelChange,
   } = useModelState({
     settingsConfig: form.getValues("settingsConfig"),
@@ -2379,6 +2380,7 @@ function ProviderFormFull({
               defaultOpusModelName={defaultOpusModelName}
               defaultFableModel={defaultFableModel}
               defaultFableModelName={defaultFableModelName}
+              subagentModel={subagentModel}
               onModelChange={handleModelChange}
               speedTestEndpoints={speedTestEndpoints}
               apiFormat={localApiFormat}
