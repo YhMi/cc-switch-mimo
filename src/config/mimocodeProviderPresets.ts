@@ -453,7 +453,7 @@ export const mimocodeProviderPresets: MimoCodeProviderPreset[] = [
   {
     name: "Code0",
     websiteUrl: "https://code0.ai",
-    apiKeyUrl: "https://code0.ai?source=ccswitch",
+    apiKeyUrl: "https://code0.ai/agent/register/B2XHxGjGmRvqgznY",
     settingsConfig: {
       npm: "@ai-sdk/openai-compatible",
       name: "Code0",
